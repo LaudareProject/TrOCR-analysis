@@ -1,0 +1,121 @@
++ACI-sample+AF8-id+ACI-,+ACI-cer+ACI-,+ACI-prediction+ACI-,+ACI-ground+AF8-truth+ACI-,+ACI-num+AF8-tokens+ACI-,+ACI-mean+AF8-gradcam+AF8-gini+ACI-,+ACI-mean+AF8-attention+AF8-gini+ACI-,+ACI-mean+AF8-loss+ACI-
+0,0.212121212121212,+ACI-viden ke nal mondo enganati. //+ACI-,+ACI-viden ke n'+//3//Q- 'l mondo engannati /+ACI-,18,0.704863798358805,0.551412076830225,10.4289792759551
+1,0.125,+ACI-defendrone / la tua gran bailia. //+ACI-,+ACI-defendane la tua gran bailia. //+ACI-,14,0.656415904412518,0.527885614954512,10.7894124787833
+2,0.0740740740740741,+ACI- bailia ne dona e potentia /+ACI-,+ACI-Bailia ne dona e potentia /+ACI-,13,0.705317351443816,0.536197915281995,11.1595823403734
+3,0.148148148148148,+ACI-o madre / de far penitentia. //+ACI-,+ACI-o madre de far penitentia /+ACI-,12,0.678291957946333,0.528101482649091,11.0023288882027
+4,0.107142857142857,+ACI-volemo a te fare obedientia. //+ACI-,+ACI-volemo a te fare obedentia /+ACI-,14,0.704572029560498,0.558122606806573,11.9904348424503
+5,0,+ACI-e stare a la tua signoria. //+ACI-,+ACI-e stare a la tua signoria. //+ACI-,13,0.730341433007335,0.53261042048114,10.7438995752197
+6,0.241379310344828,+ACI-Signoria k' a frinchi lo core / non+ACI-,+ACI-Signoria k'afranchi lo core /+ACI-,13,0.684296726310348,0.514337363909147,11.3030729242242
+7,0.125,+ACI-e la tua madre d'amore. //+ACI-,+ACI-+//3//Q- la tua madre d'amore /+ACI-,14,0.668402291132844,0.576705259928336,11.0547566174396
+8,0,+ACI-se 'l sapesse lo peccatore / a te+ACI-,+ACI-se 'l sapesse lo peccatore / a te+ACI-,17,0.705104823700079,0.514242326374177,11.0963067145032
+9,0.1,+ACI-donna retornana. //+ACI-,+ACI-donna retornaria. //+ACI-,10,0.728613579358161,0.587015065030413,8.67653424739838
+10,0.0357142857142857,+ACI-Regorni a tua gran fidan+//3//Q-a /+ACI-,+ACI-Retorni a tua gran fidan+//3//Q-a /+ACI-,14,0.706996103663675,0.541415927099197,11.0795292236975
+11,0.0740740740740741,+ACI-l'omo cun grande speran+//3//Q-a. //+ACI-,+ACI-l'omo cun grande speran+//3//Q-a /+ACI-,15,0.712843392108627,0.583791572782287,10.9943172618747
+12,0.0645161290322581,+ACI-ke tu li farai per donan+//3//Q-a / pi+//3//Q-+ACI-,+ACI-k+//3//Q- tu li farai perdonan+//3//Q-a / pi+//3//Q-+ACI-,17,0.707539925569597,0.49988164752222,11.1350186195444
+13,0.111111111111111,+ACI-k' adomandar non sapena. //+ACI-,+ACI-k'adomandar non saperia. //+ACI-,14,0.690723317354497,0.536096862297704,10.8730358156775
+14,0.0909090909090909,+ACI-Sapesse la gente cristiana / ke+ACI-,+ACI-Sapesse la gente cristiana / k' +//3//Q-+ACI-,17,0.710245211101777,0.545991724686871,10.8170001116746
+15,0.0666666666666667,+ACI-sconoscente / e villana / gustar+ACI-,+ACI-sconoscente e villana / gustar+ACI-,14,0.738478832006391,0.524457011500993,10.4382848457566
+16,0,+ACI-de te dol+//3//Q-e fontana / d'amarte+ACI-,+ACI-de te dol+//3//Q-e fontana / d'amarte+ACI-,16,0.750245020492651,0.544846999203617,10.7754280129448
+17,0,+ACI-pi+//3//Q- gran sete avarea. //+ACI-,+ACI-pi+//3//Q- gran sete avarea. //+ACI-,13,0.705569833869534,0.552275749596696,10.7405430909533
+18,0,+ACI-Avente per nostra riche+//3//Q-a / volente+ACI-,+ACI-Avente per nostra riche+//3//Q-a / volente+ACI-,15,0.738872085385997,0.526005521389241,10.3568928142389
+19,0,+ACI-sovrana belle+//3//Q-a / ki tua non sente+ACI-,+ACI-sovrana belle+//3//Q-a / ki tua non sente+ACI-,16,0.733711263148432,0.535945420663932,12.376954968553
+20,0.285714285714286,+ACI-dolce+//3//Q-a / trope la sua vita ria+AC0-+ACI-,+ACI-dolce+//3//Q-a / tropp' +//3//Q- la sua sua vita ria. //+ACI-,24,0.684997158305265,0.543451539753874,11.2389657031745
+21,0,+ACI-Ria vita dei peccatori / che non pen+AC0-+ACI-,+ACI-Ria vita dei peccatori / che non pen+AC0-+ACI-,18,0.724487825685508,0.537258927089753,10.9717756232454
+22,0.0588235294117647,+ACI-sano ne +//3//Q-lli lor cori / de tanto ga+AC0-+ACI-,+ACI-sano nelli lor cori / de tanto ga+AC0-+ACI-,17,0.726540471905835,0.548172047329375,11.100784220678
+23,0,+ACI-udio son fuori / ke lingua+ACI-,+ACI-udio son fuori / ke lingua+ACI-,12,0.714558624567659,0.526822706875858,10.715616705517
+24,0.142857142857143,+ACI-sumpnale / en te virgo virginale. //+ACI-,+ACI-supernale / en te virgo virginale /+ACI-,14,0.65992082393614,0.536628518790164,11.3570203956749
+25,0,+ACI-discese benignissima. //+ACI-,+ACI-discese benignissima. //+ACI-,11,0.663062992461324,0.546500276457133,10.2302852056243
+26,0,+ACI-La nostra redemptione / prese encar+AC0-+ACI-,+ACI-La nostra redemptione / prese encar+AC0-+ACI-,14,0.716278246963417,0.536880392295915,11.4765568513955
+27,0.121212121212121,+ACI-natione / ke sen+//3//Q-a corruptione. //+ACI-,+ACI-natione / k'+//3//Q- sen+//3//Q-a corruptione /+ACI-,14,0.716225762634876,0.493965926137454,10.6540264221174
+28,0,+ACI-de te donna sanctissima. //+ACI-,+ACI-de te donna sanctissima. //+ACI-,12,0.734025593507638,0.557987085519799,9.49998642628392
+29,0.032258064516129,+ACI-Stand' al mondo sen+//3//Q-a 'l mondo /+ACI-,+ACI-Stand'al mondo sen+//3//Q-a 'l mondo /+ACI-,15,0.756976927121155,0.576862391668911,10.3333864202102
+30,0.0277777777777778,+ACI-tutto fo per te iocondo / lo superbo+ACI-,+ACI-tutto fo per te iocondo / lo superno+ACI-,16,0.712339937872037,0.524117880692106,9.92304248176515
+31,0.17948717948718,+ACI-el profondo / electe suavissima. //+ACI-,+ACI-e 'l profondo / e l'aere suavissima. //+ACI-,20,0.694104229692301,0.563875950769953,11.1774866573513
+32,0.323529411764706,+ACI-dinorare regina / genti li sima+ACI-,+ACI-dimorare / regina gentilissima. //+ACI-,15,0.665459969367428,0.540709127591014,10.5511899481217
+33,0.0512820512820513,+ACI-Cognoscesti ben per certo / ke la scia+AC0-+ACI-,+ACI-Cosgnoscesti ben per certo / ke lascia+AC0-+ACI-,18,0.735269300646277,0.544387240269776,10.5455371410482
+34,0,+ACI-vi lo deserto / su nel cielo k' era+ACI-,+ACI-vi lo deserto / su nel cielo k' era+ACI-,17,0.731757773976057,0.556858086300224,11.7273643669837
+35,0.0625,+ACI-apto / adasti dilectissima. //+ACI-,+ACI-aperto / adasti dilectissima. //+ACI-,15,0.692162673466649,0.540768545635105,10.4188746149341
+36,0,+ACI-In lor mani ti mutasti / credo ke+ACI-,+ACI-In lor mani ti mutasti / credo ke+ACI-,16,0.744056913753217,0.549660767879697,10.7807009438984
+37,0.128205128205128,+ACI-t'adormentasti / ad altar vita trasma+ACI-,+ACI-t'adormentasti / ad altra vita transla+AC0-+ACI-,18,0.69298849053159,0.55039287383516,10.9141298130982
+38,0,+ACI-tasti / sempre mai securissima. //+ACI-,+ACI-tasti / sempre mai securissima. //+ACI-,17,0.723398784833156,0.551496339082277,10.6670687159195
+39,0.138888888888889,+ACI-Ascostumer k' era usitato / s+//3//Q- chero+ACI-,+ACI-A costume k' era usitato / s+//3//Q- ebbero+ACI-,18,0.730289635090245,0.539129973419115,10.8443979658186
+40,0.108108108108108,+ACI-colloccato / lo suo corpo con secrato. //+ACI-,+ACI-collocato / lo suo corpo consecrato /+ACI-,16,0.701512524412727,0.524342098398971,10.9329152195714
+41,0,+ACI-cun piet+//3//Q- grandissima. //+ACI-,+ACI-cun piet+//3//Q- grandissima. //+ACI-,13,0.753759671643468,0.571535520450003,10.4132303566887
+42,0.03125,+ACI-Sanctomasso veramente / non era+ACI-,+ACI-Sancto masso veramente / non era+ACI-,14,0.734073114582617,0.558942915812278,11.0677385250373
+43,0.105263157894737,+ACI-collor presente / s+//3//Q- venia tost' amen+AC0-+ACI-,+ACI-co +//3//Q-llor presente / s+//3//Q- venia tostamen+AC0-+ACI-,18,0.720000692058962,0.54822886047691,11.4149116439124
+44,0.0294117647058824,+ACI-Ave flore cun belloodore / fructo+ACI-,+ACI-Ave flore cun bello odore / fructo+ACI-,17,0.66450117799994,0.553208979823098,11.5753715805271
+45,0.0277777777777778,+ACI-cun dol+//3//Q-e savore / stella cun grande+ACI-,+ACI-cun dolce savore / stella cun grande+ACI-,17,0.730131643080861,0.557146447536972,11.5779404215076
+46,0,+ACI-splendore / madre de nostra salvan+//3//Q-a. //+ACI-,+ACI-splendore / madre de nostra salvan+//3//Q-a. //+ACI-,17,0.704920004849857,0.536471192119213,11.009100265801
+47,0,+ACI-Ave virgo pretiosa / pi+//3//Q- de nulla+ACI-,+ACI-Ave virgo pretiosa / pi+//3//Q- de nulla+ACI-,17,0.734571485761929,0.546406671230241,11.6465446028639
+48,0.0606060606060606,+ACI-amorosa / tutta iocunda et gioio /+ACI-,+ACI-amorosa / tutta iocunda et gioio+AC0-+ACI-,17,0.716075979926936,0.547672377887849,10.5481644570827
+49,0,+ACI-sa / madre de gran delectan+//3//Q-a. //+ACI-,+ACI-sa / madre de gran delectan+//3//Q-a. //+ACI-,15,0.701198107602154,0.533365786475657,10.7752171620727
+50,0.0666666666666667,+ACI-Ave madre incoronata / sovr' ai+ACI-,+ACI-Ave madre incoronata / sovra i+ACI-,15,0.704871011722153,0.561547430922448,11.2624914258718
+51,0,+ACI-cieli exaltata / da tutti li sancti+ACI-,+ACI-cieli exaltata / da tutti li sancti+ACI-,15,0.714430091742764,0.533371203965785,10.6983367150029
+52,0.268292682926829,+ACI-venerata de peccatori / se' span+//3//Q-a+ACI-,+ACI-venerata / dei peccatori se' speran+//3//Q-a. //+ACI-,21,0.713582537952176,0.517220989572062,11.0385733470321
+53,0.0294117647058824,+ACI-Ave porto de salate / ki ben t'ama+ACI-,+ACI-Ave porto de salute / ki ben t'ama+ACI-,15,0.729805797909422,0.540397582089248,12.5769035885731
+54,0.235294117647059,+ACI-tu la vite guardane / di far cadu+AC0-+ACI-,+ACI-tu l'aiute / guardane di far cadu+AC0-+ACI-,16,0.69445538663327,0.523212173895046,11.7327558458783
+55,0,+ACI-te / traici for di dubitan+//3//Q-a. //+ACI-,+ACI-te / traici for di dubitan+//3//Q-a. //+ACI-,14,0.732864722218625,0.503642393795927,10.7525545401233
+56,0.214285714285714,+ACI-Stella e t'+//3//Q- di galilea / la vera la gen+AC0-+ACI-,+ACI-Nella cit+//3//Q- di galilea / l+//3//Q- 'v' era la gen+AC0-+ACI-,21,0.69928710371553,0.525429264149313,11.3320735700074
+57,0.0625,+ACI-te iudea / favellavano in lengna+AC0-+ACI-,+ACI-te iudea / favellavano in lengua+ACI-,16,0.687003874576675,0.540522223695695,12.0676511870697
+58,0.212121212121212,+ACI-ebrea / incta tincastello. //+ACI-,+ACI-ebrea / in cit+//3//Q- et in castello //+ACI-,14,0.699449150753331,0.554407144469077,10.4838725328445
+59,0.342105263157895,+ACI-Che kiamata na+//3//Q-areco / l'+//3//Q-ul pi+AC0-+ACI-,+ACI-ch' +//3//Q- kiamata na+//3//Q-areth / la u' la vir+AC0-+ACI-,20,0.725243567060548,0.530667960149911,10.9292908579111
+60,0.032258064516129,+ACI-gene na que et stette / sponsata+ACI-,+ACI-gene naque et stette / sponsata+ACI-,13,0.736314120621642,0.495584540325791,10.706314081756
+61,0.53125,+ACI-gran alo setle sancte / non la legge+ACI-,+ACI-era a iosephe / secondo la legge+ACI-,14,0.69360341581976,0.50352639549781,10.644494228065
+62,0.191489361702128,+ACI-tresti a d+//3//Q- pena / la gente terra k' eram+AC0-+ACI-,+ACI-traesti et di pena / la gente terrena k' era 'n+ACI-,22,0.699155915076287,0.544122386245869,11.5371892360801
+63,0,+ACI-gran turban+//3//Q-a. //+ACI-,+ACI-gran turban+//3//Q-a. //+ACI-,9,0.745172484806573,0.517716613577217,9.009647961292
+64,0.0571428571428571,+ACI-Donna placente / ke s+//3//Q- foste humana /+ACI-,+ACI-Donna placente ke s+//3//Q- foste humana /+ACI-,17,0.735742917217105,0.537602366726465,11.6821304905941
+65,0.114285714285714,+ACI-fonte virgente / sovr' ogne fontana /+ACI-,+ACI-fonte surgente sovr' ogne fontana /+ACI-,17,0.740053465423263,0.520097896432191,10.745755540974
+66,0.17948717948718,+ACI-iscivamente / la gente cristiana / ke+ACI-,+ACI-istievi a mente la gente cristiana / ke+ACI-,17,0.729655556578661,0.533989313692974,10.5873943396351
+67,0.0571428571428571,+ACI-non sia vana / la nostra speran+//3//Q-a. //+ACI-,+ACI-non sia vana la nostra speran+//3//Q-a. //+ACI-,17,0.669754123457639,0.545213967541194,10.8935716226697
+68,0.175,+ACI-Kimilia la summa poten+//3//Q-a / quando in+ACI-,+ACI-Humiliasti la summa poten+//3//Q-a / quando an+AC0-+ACI-,18,0.731702386469211,0.524991710782571,10.9826231271856
+69,0.157894736842105,+ACI-cillastia tua sapientia / signore+ACI-,+ACI-cillasti la tua sapientia / signorigi+AC0-+ACI-,17,0.72079842624226,0.52882019709988,10.7710004150867
+70,0.130434782608696,+ACI-asti cun grande excellen+//3//Q-a / s+//3//Q- c' +//3//Q-i li nostro+ACI-,+ACI-asti cun grande excellen+//3//Q-a / s+//3//Q- c' +//3//Q-i licentia+ACI-,24,0.707823310444898,0.509529625982622,11.5432867969697
+71,0,+ACI-di far perdonan+//3//Q-a. //+ACI-,+ACI-di far perdonan+//3//Q-a. //+ACI-,11,0.707325909313654,0.493346925190005,9.70841745761308
+72,0.289473684210526,+ACI-Vergene pura cun tutta / bella+ACI-,+ACI-Vergene pura cun tutta belle+//3//Q-a / sen+//3//Q-a+ACI-,18,0.726508268172877,0.492808130173633,11.6067786556151
+73,0.125,+ACI-misura / e la tua grande+//3//Q-a / nostra nata+ACI-,+ACI-misura +//3//Q- la tua grande+//3//Q-a / nostra natura+ACI-,19,0.703734864200531,0.506150841221295,11.4721118596039
+74,0.0909090909090909,+ACI-Fomina gloriosa si benigna / nul+ACI-,+ACI-Femina gloriosa s+//3//Q- benigna / nul+AC0-+ACI-,18,0.714050486382159,0.532040121728915,10.8514783941209
+75,0.0303030303030303,+ACI-l'altra se' ne trova tanto degna /+ACI-,+ACI-l'altra se ne trova tanto degna /+ACI-,16,0.693705909785696,0.587970718072457,11.6808213465847
+76,0.210526315789474,+ACI-come se tu madonna / c' +//3//Q-i l'ansegna. //+ACI-,+ACI-come se' tu madonna c' +//3//Q-i la 'nsegna /+ACI-,20,0.7156981686136,0.555893807194256,10.9934363175184
+77,0.0588235294117647,+ACI-del creatore / altissimo vivente. //+ACI-,+ACI-del creatore altissimo vivente. //+ACI-,14,0.730360592656439,0.556792152106771,10.4785949550569
+78,0.3,+ACI-splendienti en luce d'ogne / mondo digni+AC0-+ACI-,+ACI-Splendiente luce d' ogne mondo / diffin+AC0-+ACI-,20,0.744842557500471,0.530326818923585,10.0168556474149
+79,0.142857142857143,+ACI-lo cielo / di sopra et in profundo / unde+ACI-,+ACI-lo cielo di sopra et in profundo / und' o+AC0-+ACI-,20,0.694873096323132,0.531180061567639,11.5136959727854
+80,0.075,+ACI-gne core st' allegro e iocundo / di quel+AC0-+ACI-,+ACI-gne core sta 'llegro e iocundo / di quel+ACI-,20,0.683436983725207,0.529171009029458,11.683605344221
+81,0.0810810810810811,+ACI-canno la mente a dio intendente. //+ACI-,+ACI-c' +//3//Q-nno la mente a dio intendente. //+ACI-,18,0.700084751401564,0.542238367874009,11.0754922926426
+82,0,+ACI-Confortami di te madonna mia /+ACI-,+ACI-Confortami di te madonna mia /+ACI-,13,0.752489968378887,0.546795587935583,10.6233949718567
+83,0.157894736842105,+ACI-et giorno / et nocte alora de la dia. //+ACI-,+ACI-et giorno et nocte a l'ora de la dia /+ACI-,20,0.674101949408587,0.535365081891505,11.6965256925672
+84,0.25,+ACI-+//3//Q- come se' dol+//3//Q-e a chiamar mar maria. //+ACI-,+ACI-come se' dol+//3//Q-e a chiamar maria /+ACI-,17,0.736591539797547,0.512983269411273,10.9041662049644
+85,0.0810810810810811,+ACI-ke par ke rim baldisca / tutta gente. //+ACI-,+ACI-ke par ke rimbaldisca tutta gente. //+ACI-,17,0.731398587154151,0.544170616315371,10.8033218458295
+86,0,+ACI-fior e grana / de me aia pietan+//3//Q-a. //+ACI-,+ACI-fior e grana / de me aia pietan+//3//Q-a. //+ACI-,19,0.729903070836387,0.541452631022039,10.5294337598117
+87,0.166666666666667,+ACI-Gram reina chi 'mchina / ciascun+AC0-+ACI-,+ACI-Gram reina chi inchina ciascun+ACI-,14,0.719753920288253,0.536775063185134,11.0778495004135
+88,0.166666666666667,+ACI-regno / s+//3//Q- mathina / la curina quando+ACI-,+ACI-regno / s' m'affina la curina quando+ACI-,17,0.691443184890225,0.528346639296687,11.9510330531527
+89,0.108108108108108,+ACI-segno / io non degno 'n cor +//3//Q- tegno /+ACI-,+ACI-segno. / Io non degno 'n core tegno /+ACI-,19,0.697696437201449,0.522476677665056,11.2692632777126
+90,0.131578947368421,+ACI-satia la mente recimpe lo core / sia+ACI-,+ACI-satia la mente / reempe lo core / sia+AC0-+ACI-,18,0.70449881546811,0.523509863217417,10.9550938308239
+91,0.25,+ACI-mostamente fontana d'amore. //+ACI-,+ACI-mot' a mente / fontana d'amore /+ACI-,16,0.686370715057498,0.550424452096984,11.2179701691493
+92,0.05,+ACI-et age pietan+//3//Q-a. //+ACI-,+ACI-et agge pietan+//3//Q-a. //+ACI-,12,0.678288179734921,0.517490337100382,10.2242574368914
+93,0.0277777777777778,+ACI-Giard+//3//Q-n ornato / de fresca verdura /+ACI-,+ACI-Giardin ornato / de fresca verdura /+ACI-,16,0.67878943288581,0.546435723322739,11.546694567427
+94,0.0263157894736842,+ACI-fosti serrato / de forte clausura / tu+AC0-+ACI-,+ACI-fosti serrato / de forte clausura / tu+ACI-,18,0.714302140260705,0.504158434740983,11.801667213026
+95,0,+ACI-o fructo nato / non pose natura /+ACI-,+ACI-o fructo nato / non pose natura /+ACI-,16,0.701090231214417,0.564734825048748,10.8329303828068
+96,0,+ACI-ma grande speran+//3//Q-a. //+ACI-,+ACI-ma grande speran+//3//Q-a. //+ACI-,12,0.705245549357699,0.563551902022031,9.91706996535262
+97,0.238095238095238,+ACI-Ben gillio torto cristello / splendente+ACI-,+ACI-Bel gillio d'orto / cristallo splendente /+ACI-,18,0.725629486886884,0.546100584022131,11.971680601024
+98,0.216216216216216,+ACI-l'om ch' era morto facesti / vivente+ACI-,+ACI-l'om ch'era morto / fecesti vivente /+ACI-,19,0.709209474614754,0.548685435175012,11.5345044626217
+99,0.131578947368421,+ACI-se gran conforto a l'om penitente. //+ACI-,+ACI-se' gran conforto / a l'om penitente /+ACI-,18,0.729096522785447,0.525325173383747,11.486259582556
+100,0.05,+ACI-e da li ferman+//3//Q-a. //+ACI-,+ACI-e daili ferman+//3//Q-a. //+ACI-,12,0.726073030649601,0.560943078438093,10.0400355427215
+101,0.0526315789473684,+ACI-Alta raina de sole amantata / corona+ACI-,+ACI-Alta raina / de sole amantata / corona+ACI-,16,0.7243489473463,0.541308042027179,11.1992167076096
+102,0.0434782608695652,+ACI-fontana dalegran+//3//Q-a. //+ACI-,+ACI-fontana d'alegran+//3//Q-a. //+ACI-,12,0.712227411437376,0.548432080097201,10.012134971718
+103,0.219512195121951,+ACI-Ave fo 'n te con signata / de l'astirpe dau+AC0-+ACI-,+ACI-Ave fonte consignata / de la stirpe david+ACI-,16,0.733535409142055,0.534590783979804,12.1397215276957
+104,0.024390243902439,+ACI-nata / pi+//3//Q- de null'altra se' beata / ave+ACI-,+ACI-nata / pi+//3//Q- de null'altra se' beata / ave+AC0-+ACI-,22,0.710741728971914,0.536154393246545,11.3665296889164
+105,0.0714285714285714,+ACI-stin deo verace aman+//3//Q-a. //+ACI-,+ACI-sti 'n deo verace aman+//3//Q-a. //+ACI-,16,0.686271822398083,0.513552041306995,11.0533969411626
+106,0.117647058823529,+ACI-nostro sire volle morte sofferi /+ACI-,+ACI-nostro sire / volle morte sofferi+AC0-+ACI-,17,0.678165601461854,0.544814210367762,12.0782351086245
+107,0,+ACI-re / per recomparar la gente. //+ACI-,+ACI-re / per recomparar la gente. //+ACI-,15,0.676970296937,0.529784754939265,9.45126017828782
+108,0.189189189189189,+ACI-San+//3//Q-a 'lchun offensione / s+//3//Q- foste+ACI-,+ACI-Sen+//3//Q-' alchun' offensione / s+//3//Q- sosten+AC0-+ACI-,21,0.696549940177119,0.520125068908857,11.3157103100703
+109,0.027027027027027,+ACI-ne passione / per trarer di possessi+ACI-,+ACI-ne passione / per trarer di possessi+AC0-+ACI-,14,0.755025511478866,0.530857462027864,10.981118841895
+110,0.161290322580645,+ACI-one l'onvidioso serpente. //+ACI-,+ACI-one / lo 'nvidioso serpente. //+ACI-,15,0.752061715896521,0.546888200417372,10.2255517750978
+111,0.0555555555555556,+ACI-Quando tu 'l vedesti morto / ne con+AC0-+ACI-,+ACI-Quando tu 'l vedesti morto / ne cro+AC0-+ACI-,18,0.711463010801228,0.578645537445144,10.3179916478693
+112,0.0882352941176471,+ACI-cel tuo di porto / la speran+//3//Q-a fo+ACI-,+ACI-ce 'l tuo diporto / la speran+//3//Q-a fo+ACI-,18,0.711927188332854,0.52732350186539,11.1416866969731
+113,0.0263157894736842,+ACI-consorto / de te donna cognoscente. //+ACI-,+ACI-conforto / de te donna cognoscente. //+ACI-,17,0.722687444139473,0.526824689922385,10.5750724458519
+114,0.162162162162162,+ACI-Quella pena teramar+//3//Q- / ke 'l videve+ACI-,+ACI-Quela pena t'er' amara / k+//3//Q- 'l videve+ACI-,21,0.706624664918499,0.565711563175458,11.7965332596075
+115,0.205882352941176,+ACI- stare inara / comangelo ke se'+ACI-,+ACI-stare in ara / com' angnello ke se+ACI-,16,0.695312887307468,0.529712684334508,10.9700354388915
+116,0.09375,+ACI-spura stava molto patiente. //+ACI-,+ACI-spara / stava molto patiente. //+ACI-,15,0.7363157127235,0.548817351851422,11.1840283821026
+117,0.05,+ACI-Quel te fo dolor de parto / ke 'l videui+ACI-,+ACI-Quel te fo dolor de parto / k+//3//Q- 'l videvi+ACI-,19,0.762439470925522,0.530032755046071,10.7356028643094
+118,0.119047619047619,+ACI-Pe te deo nave vietoria / de la supna+AC0-+ACI-,+ACI-Per te deo n'ave victoria / de la superna+AC0-+ACI-,18,0.728361513195323,0.517013452466943,10.5582031818728
+119,0,+ACI-le gloria / la tua corona imperia /+ACI-,+ACI-le gloria / la tua corona imperia /+ACI-,15,0.706676753225351,0.533511313234111,11.0329544191559
