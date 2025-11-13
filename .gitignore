@@ -10,3 +10,17 @@ wheels/
 .venv
 combined_visualizations
 plots
+.~lock.combined_token_results.csv#
+cer_distribution_histogram.png
+gradcam_ablation.txt
+gradcam_ablation_threshold_analysis.png
+ml_experiment.txt
+ml_experiment_threshold_analysis.png
+sample_cer_distribution_histogram.png
+seaborn_plot_2_heatmap.png
+seaborn_scatter_token_loss_vs_attention_coverage.png
+seaborn_scatter_token_loss_vs_attention_entropy.png
+seaborn_scatter_token_loss_vs_attention_gini.png
+seaborn_scatter_token_loss_vs_gradcam_coverage.png
+seaborn_scatter_token_loss_vs_gradcam_entropy.png
+seaborn_scatter_token_loss_vs_gradcam_gini.png
