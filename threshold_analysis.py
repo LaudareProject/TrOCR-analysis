@@ -70,7 +70,6 @@ def load_and_preprocess_data_gradcam(csv_path):
     
     # Decode URL-encoded column names
     df.columns = [urllib.parse.unquote_plus(col) for col in df.columns]
-
     # Define original feature columns for aggregation
     gradcam_features_orig = ['gradcam_gini', 'gradcam_coverage', 'gradcam_entropy']
 
@@ -97,7 +96,8 @@ def load_and_preprocess_data_gradcam(csv_path):
             new_columns.append(col)
 
     aggregated_df.columns = new_columns
-    gradcam_features = ['gradcam_gini', 'gradcam_coverage', 'gradcam_entropy']
+    
+    gradcam_features = ['gradcam_gini_mean', 'gradcam_coverage_mean', 'gradcam_entropy_mean']
     loss_features = ['token_loss_mean', 'token_loss_max', 'token_loss_std']
 
     return aggregated_df, gradcam_features, loss_features
@@ -207,52 +207,38 @@ def run_gradcam_experiments_for_threshold(df, gradcam_features, loss_features, t
 
     # Individual GradCAM feature experiments
     for feature in gradcam_features:
-        feature_name = feature.replace('gradcam_', '')
-        X_single = df[[feature]].values
-        results[f'Single: {feature_name}'] = run_experiment_silent(X_single, y, [feature], threshold)
-    
-    # Individual loss feature experiments
-    for feature in loss_features:
-        feature_name = feature.replace('token_loss_', 'loss_')
+        feature_name = feature.replace('gradcam_', '').replace('_mean', '')
         X_single = df[[feature]].values
         results[f'Single: {feature_name}'] = run_experiment_silent(X_single, y, [feature], threshold)
 
-    # Pairwise GradCAM feature experiments
+    # Pairwise GradCAM feature experiments (original pairs)
     for i in range(len(gradcam_features)):
         for j in range(i+1, len(gradcam_features)):
             feature1 = gradcam_features[i]
             feature2 = gradcam_features[j]
             feature_names = [feature1, feature2]
 
-            name1 = feature1.replace('gradcam_', '')
-            name2 = feature2.replace('gradcam_', '')
+            name1 = feature1.replace('gradcam_', '').replace('_mean', '')
+            name2 = feature2.replace('gradcam_', '').replace('_mean', '')
 
             X_pair = df[feature_names].values
             results[f'Pair: {name1} + {name2}'] = run_experiment_silent(X_pair, y, feature_names, threshold)
     
-    # Pairwise GradCAM + Loss feature experiments
+    # NEW: Each individual GradCAM feature + ALL loss features
     for gradcam_feature in gradcam_features:
-        for loss_feature in loss_features:
-            feature_names = [gradcam_feature, loss_feature]
-            
-            gradcam_name = gradcam_feature.replace('gradcam_', '')
-            loss_name = loss_feature.replace('token_loss_', 'loss_')
-            
-            X_pair = df[feature_names].values
-            results[f'Pair: {gradcam_name} + {loss_name}'] = run_experiment_silent(X_pair, y, feature_names, threshold)
+        feature_names = [gradcam_feature] + loss_features
+        gradcam_name = gradcam_feature.replace('gradcam_', '').replace('_mean', '')
+        
+        X_combined = df[feature_names].values
+        results[f'Pair: {gradcam_name} + loss'] = run_experiment_silent(X_combined, y, feature_names, threshold)
+    
+    # NEW: Loss alone (all loss features)
+    X_loss = df[loss_features].values
+    results['Single: loss'] = run_experiment_silent(X_loss, y, loss_features, threshold)
 
     # All three GradCAM features
     X_all_gradcam = df[gradcam_features].values
     results['All Three GradCAM'] = run_experiment_silent(X_all_gradcam, y, gradcam_features, threshold)
-    
-    # All loss features
-    X_all_loss = df[loss_features].values
-    results['All Loss Features'] = run_experiment_silent(X_all_loss, y, loss_features, threshold)
-    
-    # All features combined
-    all_features = gradcam_features + loss_features
-    X_all = df[all_features].values
-    results['All Features'] = run_experiment_silent(X_all, y, all_features, threshold)
 
     return results
 
@@ -264,7 +250,7 @@ def main():
     df_gradcam, gradcam_features_gradcam, loss_features_gradcam = load_and_preprocess_data_gradcam(csv_path)
 
     # Define threshold range
-    thresholds = np.arange(0.0, 0.22, 0.02)  # 0.0 to 0.2 with step 0.02
+    thresholds = np.arange(0.0, 0.175, 0.005)  # 0.0 to 0.17 with step 0.005
 
     print(f"Running experiments for thresholds: {thresholds}")
 
@@ -319,7 +305,7 @@ def main():
     
     # Set minor ticks for fine grid
     ax = plt.gca()
-    ax.set_xticks(np.arange(0, 0.17, 0.01), minor=True)
+    ax.set_xticks(np.arange(0, 0.18, 0.01), minor=True)
     ax.set_yticks(np.arange(0.4, 0.71, 0.01), minor=True)
     
     # Set major y-axis ticks every 0.1 with thick labels
@@ -354,7 +340,7 @@ def main():
     
     # Set minor ticks for fine grid
     ax = plt.gca()
-    ax.set_xticks(np.arange(0, 0.17, 0.01), minor=True)
+    ax.set_xticks(np.arange(0, 0.18, 0.01), minor=True)
     ax.set_yticks(np.arange(0.4, 0.71, 0.01), minor=True)
     
     # Set major y-axis ticks every 0.1 with thick labels
