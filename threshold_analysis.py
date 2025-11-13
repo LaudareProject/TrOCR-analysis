@@ -28,17 +28,25 @@ def load_and_preprocess_data_ml(csv_path):
     gradcam_features_orig = ['gradcam_gini', 'gradcam_coverage', 'gradcam_entropy']
     attention_features_orig = ['attention_gini', 'attention_coverage', 'attention_entropy']
 
-    # After aggregation, column names will have "_mean" suffix
-    gradcam_features = ['gradcam_gini_mean', 'gradcam_coverage_mean', 'gradcam_entropy_mean']
-    attention_features = ['attention_gini_mean', 'attention_coverage_mean', 'attention_entropy_mean']
+    # After aggregation, column names will have suffixes: _mean, _min, _max
+    gradcam_features = [
+        'gradcam_gini_mean', 'gradcam_gini_min', 'gradcam_gini_max',
+        'gradcam_coverage_mean', 'gradcam_coverage_min', 'gradcam_coverage_max',
+        'gradcam_entropy_mean', 'gradcam_entropy_min', 'gradcam_entropy_max'
+    ]
+    attention_features = [
+        'attention_gini_mean', 'attention_gini_min', 'attention_gini_max',
+        'attention_coverage_mean', 'attention_coverage_min', 'attention_coverage_max',
+        'attention_entropy_mean', 'attention_entropy_min', 'attention_entropy_max'
+    ]
     loss_features = ['token_loss_mean', 'token_loss_max', 'token_loss_std']
 
-    # Aggregate features by sample_id using mean
+    # Aggregate features by sample_id using mean, min, max
     agg_dict = {}
 
-    # Mean aggregation for gradcam and attention features
+    # Mean, min, max aggregation for gradcam and attention features
     for feature in gradcam_features_orig + attention_features_orig:
-        agg_dict[feature] = 'mean'
+        agg_dict[feature] = ['mean', 'min', 'max']
 
     # Multiple aggregations for token loss
     agg_dict['token_loss'] = ['mean', 'max', 'std']
@@ -76,7 +84,7 @@ def load_and_preprocess_data_gradcam(csv_path):
     # Group by sample_id and compute aggregations
     agg_dict = {}
     for feature in gradcam_features_orig:
-        agg_dict[feature] = 'mean'
+        agg_dict[feature] = ['mean', 'min', 'max']
     
     # Multiple aggregations for token loss
     agg_dict['token_loss'] = ['mean', 'max', 'std']
@@ -97,10 +105,13 @@ def load_and_preprocess_data_gradcam(csv_path):
 
     aggregated_df.columns = new_columns
     
-    gradcam_features = ['gradcam_gini_mean', 'gradcam_coverage_mean', 'gradcam_entropy_mean']
+    # Group features by metric type (each metric has mean, min, max)
+    gini_features = ['gradcam_gini_mean', 'gradcam_gini_min', 'gradcam_gini_max']
+    coverage_features = ['gradcam_coverage_mean', 'gradcam_coverage_min', 'gradcam_coverage_max']
+    entropy_features = ['gradcam_entropy_mean', 'gradcam_entropy_min', 'gradcam_entropy_max']
     loss_features = ['token_loss_mean', 'token_loss_max', 'token_loss_std']
 
-    return aggregated_df, gradcam_features, loss_features
+    return aggregated_df, gini_features, coverage_features, entropy_features, loss_features
 
 def run_experiment_silent(X, y, feature_names, threshold=0):
     """Run a single binary classification experiment with Leave-One-Out Cross-Validation (silent version)"""
@@ -194,7 +205,7 @@ def run_ml_experiments_for_threshold(df, gradcam_features, attention_features, l
 
     return results
 
-def run_gradcam_experiments_for_threshold(df, gradcam_features, loss_features, threshold):
+def run_gradcam_experiments_for_threshold(df, gini_features, coverage_features, entropy_features, loss_features, threshold):
     """Run GradCAM ablation experiments for a given threshold and return results"""
     # Prepare target variable
     y = (df['image_cer'] > threshold).astype(int).values
@@ -204,41 +215,45 @@ def run_gradcam_experiments_for_threshold(df, gradcam_features, loss_features, t
         return None
 
     results = {}
-
-    # Individual GradCAM feature experiments
-    for feature in gradcam_features:
-        feature_name = feature.replace('gradcam_', '').replace('_mean', '')
-        X_single = df[[feature]].values
-        results[f'Single: {feature_name}'] = run_experiment_silent(X_single, y, [feature], threshold)
-
-    # Pairwise GradCAM feature experiments (original pairs)
-    for i in range(len(gradcam_features)):
-        for j in range(i+1, len(gradcam_features)):
-            feature1 = gradcam_features[i]
-            feature2 = gradcam_features[j]
-            feature_names = [feature1, feature2]
-
-            name1 = feature1.replace('gradcam_', '').replace('_mean', '')
-            name2 = feature2.replace('gradcam_', '').replace('_mean', '')
-
-            X_pair = df[feature_names].values
-            results[f'Pair: {name1} + {name2}'] = run_experiment_silent(X_pair, y, feature_names, threshold)
     
-    # NEW: Each individual GradCAM feature + ALL loss features
-    for gradcam_feature in gradcam_features:
-        feature_names = [gradcam_feature] + loss_features
-        gradcam_name = gradcam_feature.replace('gradcam_', '').replace('_mean', '')
+    # Create metric groups dictionary
+    metric_groups = {
+        'gini': gini_features,
+        'coverage': coverage_features,
+        'entropy': entropy_features
+    }
+
+    # Individual metric experiments (each with mean, min, max as a group)
+    for metric_name, features in metric_groups.items():
+        X_single = df[features].values
+        results[f'Single: {metric_name}'] = run_experiment_silent(X_single, y, features, threshold)
+
+    # Pairwise metric experiments
+    metric_names = list(metric_groups.keys())
+    for i in range(len(metric_names)):
+        for j in range(i+1, len(metric_names)):
+            metric1 = metric_names[i]
+            metric2 = metric_names[j]
+            combined_features = metric_groups[metric1] + metric_groups[metric2]
+            
+            X_pair = df[combined_features].values
+            results[f'Pair: {metric1} + {metric2}'] = run_experiment_silent(X_pair, y, combined_features, threshold)
+    
+    # Each individual metric + ALL loss features
+    for metric_name, features in metric_groups.items():
+        combined_features = features + loss_features
         
-        X_combined = df[feature_names].values
-        results[f'Pair: {gradcam_name} + loss'] = run_experiment_silent(X_combined, y, feature_names, threshold)
+        X_combined = df[combined_features].values
+        results[f'Pair: {metric_name} + loss'] = run_experiment_silent(X_combined, y, combined_features, threshold)
     
-    # NEW: Loss alone (all loss features)
+    # Loss alone (all loss features)
     X_loss = df[loss_features].values
     results['Single: loss'] = run_experiment_silent(X_loss, y, loss_features, threshold)
 
-    # All three GradCAM features
-    X_all_gradcam = df[gradcam_features].values
-    results['All Three GradCAM'] = run_experiment_silent(X_all_gradcam, y, gradcam_features, threshold)
+    # All three metrics
+    all_gradcam_features = gini_features + coverage_features + entropy_features
+    X_all_gradcam = df[all_gradcam_features].values
+    results['All Three GradCAM'] = run_experiment_silent(X_all_gradcam, y, all_gradcam_features, threshold)
 
     return results
 
@@ -247,7 +262,7 @@ def main():
 
     # Load data for both experiments
     df_ml, gradcam_features_ml, attention_features, loss_features = load_and_preprocess_data_ml(csv_path)
-    df_gradcam, gradcam_features_gradcam, loss_features_gradcam = load_and_preprocess_data_gradcam(csv_path)
+    df_gradcam, gini_features, coverage_features, entropy_features, loss_features_gradcam = load_and_preprocess_data_gradcam(csv_path)
 
     # Define threshold range
     thresholds = np.arange(0.0, 0.175, 0.005)  # 0.0 to 0.17 with step 0.005
@@ -272,7 +287,7 @@ def main():
                 ml_results[exp_name]['balanced_accuracies'].append(result['balanced_accuracy'])
 
         # GradCAM experiments
-        gradcam_exp_results = run_gradcam_experiments_for_threshold(df_gradcam, gradcam_features_gradcam, loss_features_gradcam, threshold)
+        gradcam_exp_results = run_gradcam_experiments_for_threshold(df_gradcam, gini_features, coverage_features, entropy_features, loss_features_gradcam, threshold)
         if gradcam_exp_results:
             for exp_name, result in gradcam_exp_results.items():
                 # Remove "Single: " and "Pair: " prefixes from experiment names
@@ -306,16 +321,16 @@ def main():
     # Set minor ticks for fine grid
     ax = plt.gca()
     ax.set_xticks(np.arange(0, 0.18, 0.01), minor=True)
-    ax.set_yticks(np.arange(0.4, 0.71, 0.01), minor=True)
+    ax.set_yticks(np.arange(0.4, 0.75, 0.01), minor=True)
     
     # Set major y-axis ticks every 0.1 with thick labels
-    ax.set_yticks(np.arange(0.4, 0.71, 0.1), minor=False)
+    ax.set_yticks(np.arange(0.4, 0.75, 0.1), minor=False)
     ax.tick_params(axis='y', which='major', width=2, length=6)
     
     # Rotate x-axis labels by 45 degrees
     plt.xticks(rotation=45)
     
-    plt.ylim(0.4, 0.7)
+    plt.ylim(0.4, 0.75)
 
     plt.tight_layout()
     plt.savefig('ml_experiment_threshold_analysis.png', dpi=300, bbox_inches='tight')
@@ -341,16 +356,16 @@ def main():
     # Set minor ticks for fine grid
     ax = plt.gca()
     ax.set_xticks(np.arange(0, 0.18, 0.01), minor=True)
-    ax.set_yticks(np.arange(0.4, 0.71, 0.01), minor=True)
+    ax.set_yticks(np.arange(0.4, 0.75, 0.01), minor=True)
     
     # Set major y-axis ticks every 0.1 with thick labels
-    ax.set_yticks(np.arange(0.4, 0.71, 0.1), minor=False)
+    ax.set_yticks(np.arange(0.4, 0.75, 0.1), minor=False)
     ax.tick_params(axis='y', which='major', width=2, length=6)
     
     # Rotate x-axis labels by 45 degrees
     plt.xticks(rotation=45)
     
-    plt.ylim(0.4, 0.7)
+    plt.ylim(0.4, 0.75)
 
     plt.tight_layout()
     plt.savefig('gradcam_ablation_threshold_analysis.png', dpi=300, bbox_inches='tight')

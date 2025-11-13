@@ -24,10 +24,10 @@ def load_and_preprocess_data(csv_path):
     
     print("Aggregating token-level features by sample_id...")
     
-    # Group by sample_id and compute mean aggregation
+    # Group by sample_id and compute mean, min, max aggregation
     agg_dict = {}
     for feature in gradcam_features_orig:
-        agg_dict[feature] = 'mean'
+        agg_dict[feature] = ['mean', 'min', 'max']
     agg_dict['image_cer'] = 'first'
     
     aggregated_df = df.groupby('sample_id').agg(agg_dict).reset_index()
@@ -46,10 +46,13 @@ def load_and_preprocess_data(csv_path):
     aggregated_df.columns = new_columns
     print(f"Aggregated to {len(aggregated_df)} samples")
     
-    # After aggregation with single function, column names remain the same
-    gradcam_features = ['gradcam_gini', 'gradcam_coverage', 'gradcam_entropy']
+    # After aggregation with multiple functions, column names have suffixes
+    # Group features by metric type (each metric has mean, min, max)
+    gini_features = ['gradcam_gini_mean', 'gradcam_gini_min', 'gradcam_gini_max']
+    coverage_features = ['gradcam_coverage_mean', 'gradcam_coverage_min', 'gradcam_coverage_max']
+    entropy_features = ['gradcam_entropy_mean', 'gradcam_entropy_min', 'gradcam_entropy_max']
     
-    return aggregated_df, gradcam_features
+    return aggregated_df, gini_features, coverage_features, entropy_features
 
 def run_experiment(X, y, feature_names, experiment_name, threshold=0):
     """Run a single binary classification experiment with Leave-One-Out Cross-Validation"""
@@ -164,7 +167,14 @@ def main():
     csv_path = 'combined_token_results.csv'
     
     # Load and preprocess data
-    df, gradcam_features = load_and_preprocess_data(csv_path)
+    df, gini_features, coverage_features, entropy_features = load_and_preprocess_data(csv_path)
+    
+    # Create a dictionary mapping metric names to their feature sets
+    metric_groups = {
+        'gini': gini_features,
+        'coverage': coverage_features,
+        'entropy': entropy_features
+    }
     
     # Prepare target variable - binary classification
     # Good samples: CER <= threshold (class 0)
@@ -181,34 +191,32 @@ def main():
         class_name = f"Good (CER<={threshold})" if cls == 0 else f"Bad (CER>{threshold})"
         print(f"  {class_name}: {count} samples ({count/len(y)*100:.1f}%)")
     
-    # Individual feature experiments
+    # Individual metric experiments (each with mean, min, max)
     individual_results = []
     
-    for i, feature in enumerate(gradcam_features):
-        feature_name = feature.replace('gradcam_', '')
-        X_single = df[[feature]].values
-        result = run_experiment(X_single, y, [feature], f"Single Feature: {feature_name}", threshold)
-        individual_results.append((feature_name, result))
+    for metric_name, features in metric_groups.items():
+        X_single = df[features].values
+        result = run_experiment(X_single, y, features, f"Single Metric: {metric_name}", threshold)
+        individual_results.append((metric_name, result))
     
-    # Pairwise feature experiments
+    # Pairwise metric experiments
     pairwise_results = []
     
-    for i in range(len(gradcam_features)):
-        for j in range(i+1, len(gradcam_features)):
-            feature1 = gradcam_features[i]
-            feature2 = gradcam_features[j]
-            feature_names = [feature1, feature2]
+    metric_names = list(metric_groups.keys())
+    for i in range(len(metric_names)):
+        for j in range(i+1, len(metric_names)):
+            metric1 = metric_names[i]
+            metric2 = metric_names[j]
+            combined_features = metric_groups[metric1] + metric_groups[metric2]
             
-            name1 = feature1.replace('gradcam_', '')
-            name2 = feature2.replace('gradcam_', '')
-            
-            X_pair = df[feature_names].values
-            result = run_experiment(X_pair, y, feature_names, f"Pair: {name1} + {name2}", threshold)
-            pairwise_results.append((f"{name1} + {name2}", result))
+            X_pair = df[combined_features].values
+            result = run_experiment(X_pair, y, combined_features, f"Pair: {metric1} + {metric2}", threshold)
+            pairwise_results.append((f"{metric1} + {metric2}", result))
     
-    # All three features (for comparison)
-    X_all = df[gradcam_features].values
-    result_all = run_experiment(X_all, y, gradcam_features, "All Three: gini + coverage + entropy", threshold)
+    # All three metrics (for comparison)
+    all_features = gini_features + coverage_features + entropy_features
+    X_all = df[all_features].values
+    result_all = run_experiment(X_all, y, all_features, "All Three: gini + coverage + entropy", threshold)
     
     # Summary comparison
     print(f"\n{'='*80}")

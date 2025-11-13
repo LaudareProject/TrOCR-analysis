@@ -30,9 +30,17 @@ def load_and_preprocess_data(csv_path):
     gradcam_features_orig = ['gradcam_gini', 'gradcam_coverage', 'gradcam_entropy']  # excluding gradcam_peak
     attention_features_orig = ['attention_gini', 'attention_coverage', 'attention_entropy']  # excluding attention_peak
     
-    # After aggregation, column names will have "_mean" suffix
-    gradcam_features = ['gradcam_gini_mean', 'gradcam_coverage_mean', 'gradcam_entropy_mean']  
-    attention_features = ['attention_gini_mean', 'attention_coverage_mean', 'attention_entropy_mean']
+    # After aggregation, column names will have suffixes: _mean, _min, _max
+    gradcam_features = [
+        'gradcam_gini_mean', 'gradcam_gini_min', 'gradcam_gini_max',
+        'gradcam_coverage_mean', 'gradcam_coverage_min', 'gradcam_coverage_max',
+        'gradcam_entropy_mean', 'gradcam_entropy_min', 'gradcam_entropy_max'
+    ]
+    attention_features = [
+        'attention_gini_mean', 'attention_gini_min', 'attention_gini_max',
+        'attention_coverage_mean', 'attention_coverage_min', 'attention_coverage_max',
+        'attention_entropy_mean', 'attention_entropy_min', 'attention_entropy_max'
+    ]
     loss_features = ['token_loss_mean', 'token_loss_max', 'token_loss_std']  # multiple loss aggregations
     
     print(f"GradCAM features: {gradcam_features}")
@@ -45,9 +53,9 @@ def load_and_preprocess_data(csv_path):
     # Group by sample_id and compute aggregations
     agg_dict = {}
     
-    # Mean aggregation for gradcam and attention features
+    # Mean, min, max aggregation for gradcam and attention features
     for feature in gradcam_features_orig + attention_features_orig:
-        agg_dict[feature] = 'mean'
+        agg_dict[feature] = ['mean', 'min', 'max']
     
     # Multiple aggregations for token loss
     agg_dict['token_loss'] = ['mean', 'max', 'std']
