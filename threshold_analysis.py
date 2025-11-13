@@ -113,6 +113,78 @@ def load_and_preprocess_data_gradcam(csv_path):
 
     return aggregated_df, gini_features, coverage_features, entropy_features, loss_features
 
+def load_and_preprocess_data_filtered(csv_path):
+    """Load CSV data and aggregate with filtered tokens for GradCAM (filtered token experiment)"""
+    print("Loading data for Filtered Token experiment...")
+    df = pd.read_csv(csv_path)
+    
+    # Decode URL-encoded column names
+    df.columns = [urllib.parse.unquote_plus(col) for col in df.columns]
+    
+    # Split data for different aggregations
+    # For GradCAM: exclude token_id 0 and 2
+    df_gradcam_filtered = df[~df['token_id'].isin([0, 2])].copy()
+    
+    # For Loss: use all tokens
+    df_loss_all = df.copy()
+    
+    # Define feature columns (only gini and entropy)
+    gradcam_features_orig = ['gradcam_gini', 'gradcam_entropy']
+    
+    # Aggregate GradCAM features from filtered data
+    agg_dict_gradcam = {}
+    for feature in gradcam_features_orig:
+        agg_dict_gradcam[feature] = ['mean', 'min', 'max']
+    agg_dict_gradcam['image_cer'] = 'first'
+    
+    gradcam_aggregated = df_gradcam_filtered.groupby('sample_id').agg(agg_dict_gradcam).reset_index()
+    
+    # Flatten column names for GradCAM
+    new_columns_gradcam = []
+    for col in gradcam_aggregated.columns:
+        if isinstance(col, tuple):
+            if col[1] == '' or col[1] == 'first':
+                new_columns_gradcam.append(col[0])
+            else:
+                new_columns_gradcam.append(f"{col[0]}_{col[1]}")
+        else:
+            new_columns_gradcam.append(col)
+    
+    gradcam_aggregated.columns = new_columns_gradcam
+    
+    # Aggregate Loss features from all tokens
+    agg_dict_loss = {
+        'token_loss': ['mean', 'max', 'std'],
+        'image_cer': 'first'
+    }
+    
+    loss_aggregated = df_loss_all.groupby('sample_id').agg(agg_dict_loss).reset_index()
+    
+    # Flatten column names for Loss
+    new_columns_loss = []
+    for col in loss_aggregated.columns:
+        if isinstance(col, tuple):
+            if col[1] == '' or col[1] == 'first':
+                new_columns_loss.append(col[0])
+            else:
+                new_columns_loss.append(f"{col[0]}_{col[1]}")
+        else:
+            new_columns_loss.append(col)
+    
+    loss_aggregated.columns = new_columns_loss
+    
+    # Merge the two aggregated dataframes
+    merged_df = pd.merge(gradcam_aggregated, 
+                         loss_aggregated[['sample_id', 'token_loss_mean', 'token_loss_max', 'token_loss_std']], 
+                         on='sample_id', how='inner')
+    
+    # Define final feature lists
+    gini_features = ['gradcam_gini_mean', 'gradcam_gini_min', 'gradcam_gini_max']
+    entropy_features = ['gradcam_entropy_mean', 'gradcam_entropy_min', 'gradcam_entropy_max']
+    loss_features = ['token_loss_mean', 'token_loss_max', 'token_loss_std']
+    
+    return merged_df, gini_features, entropy_features, loss_features
+
 def run_experiment_silent(X, y, feature_names, threshold=0):
     """Run a single binary classification experiment with Leave-One-Out Cross-Validation (silent version)"""
     # Initialize Leave-One-Out cross-validator
@@ -257,12 +329,58 @@ def run_gradcam_experiments_for_threshold(df, gini_features, coverage_features, 
 
     return results
 
+def run_filtered_experiments_for_threshold(df, gini_features, entropy_features, loss_features, threshold):
+    """Run filtered token experiments for a given threshold and return results"""
+    # Prepare target variable
+    y = (df['image_cer'] > threshold).astype(int).values
+
+    # Skip if all samples have the same class
+    if len(np.unique(y)) < 2:
+        return None
+
+    results = {}
+
+    # Experiment 1: Only Gini (filtered tokens)
+    X_gini = df[gini_features].values
+    results['gini (filtered)'] = run_experiment_silent(X_gini, y, gini_features, threshold)
+
+    # Experiment 2: Only Entropy (filtered tokens)
+    X_entropy = df[entropy_features].values
+    results['entropy (filtered)'] = run_experiment_silent(X_entropy, y, entropy_features, threshold)
+
+    # Experiment 3: Gini + Entropy (filtered tokens)
+    gini_entropy_features = gini_features + entropy_features
+    X_gini_entropy = df[gini_entropy_features].values
+    results['gini + entropy (filtered)'] = run_experiment_silent(X_gini_entropy, y, gini_entropy_features, threshold)
+
+    # Experiment 4: Only Loss (all tokens)
+    X_loss = df[loss_features].values
+    results['loss'] = run_experiment_silent(X_loss, y, loss_features, threshold)
+
+    # Experiment 5: Gini + Loss
+    gini_loss_features = gini_features + loss_features
+    X_gini_loss = df[gini_loss_features].values
+    results['gini (filtered) + loss'] = run_experiment_silent(X_gini_loss, y, gini_loss_features, threshold)
+
+    # Experiment 6: Entropy + Loss
+    entropy_loss_features = entropy_features + loss_features
+    X_entropy_loss = df[entropy_loss_features].values
+    results['entropy (filtered) + loss'] = run_experiment_silent(X_entropy_loss, y, entropy_loss_features, threshold)
+
+    # Experiment 7: Gini + Entropy + Loss
+    all_features = gini_features + entropy_features + loss_features
+    X_all = df[all_features].values
+    results['all (filtered gradcam)'] = run_experiment_silent(X_all, y, all_features, threshold)
+
+    return results
+
 def main():
     csv_path = 'combined_token_results.csv'
 
-    # Load data for both experiments
+    # Load data for all three experiments
     df_ml, gradcam_features_ml, attention_features, loss_features = load_and_preprocess_data_ml(csv_path)
     df_gradcam, gini_features, coverage_features, entropy_features, loss_features_gradcam = load_and_preprocess_data_gradcam(csv_path)
+    df_filtered, gini_features_filtered, entropy_features_filtered, loss_features_filtered = load_and_preprocess_data_filtered(csv_path)
 
     # Define threshold range
     thresholds = np.arange(0.0, 0.175, 0.005)  # 0.0 to 0.17 with step 0.005
@@ -272,10 +390,11 @@ def main():
     # Store results
     ml_results = {}
     gradcam_results = {}
+    filtered_results = {}
 
     # Run experiments for each threshold
     for threshold in thresholds:
-        print(f"Processing threshold: {threshold:3f}")
+        print(f"Processing threshold: {threshold:.3f}")
 
         # ML experiments
         ml_exp_results = run_ml_experiments_for_threshold(df_ml, gradcam_features_ml, attention_features, loss_features, threshold)
@@ -296,6 +415,15 @@ def main():
                     gradcam_results[clean_exp_name] = {'thresholds': [], 'balanced_accuracies': []}
                 gradcam_results[clean_exp_name]['thresholds'].append(threshold)
                 gradcam_results[clean_exp_name]['balanced_accuracies'].append(result['balanced_accuracy'])
+
+        # Filtered token experiments
+        filtered_exp_results = run_filtered_experiments_for_threshold(df_filtered, gini_features_filtered, entropy_features_filtered, loss_features_filtered, threshold)
+        if filtered_exp_results:
+            for exp_name, result in filtered_exp_results.items():
+                if exp_name not in filtered_results:
+                    filtered_results[exp_name] = {'thresholds': [], 'balanced_accuracies': []}
+                filtered_results[exp_name]['thresholds'].append(threshold)
+                filtered_results[exp_name]['balanced_accuracies'].append(result['balanced_accuracy'])
 
     # Create plots
     plt.style.use('default')
@@ -371,6 +499,42 @@ def main():
     plt.savefig('gradcam_ablation_threshold_analysis.png', dpi=300, bbox_inches='tight')
     plt.show()
 
+    # Plot 3: Filtered Token Experiment Results
+    plt.figure(figsize=(10, 6))
+    colors_filtered = sns.color_palette("colorblind", n_colors=len(filtered_results))
+
+    for i, (exp_name, data) in enumerate(filtered_results.items()):
+        plt.plot(data['thresholds'], data['balanced_accuracies'],
+                linewidth=1, label=exp_name, color=colors_filtered[i])
+
+    plt.xlabel('CER Threshold', fontsize=12)
+    plt.ylabel('Balanced Accuracy', fontsize=12)
+    plt.title('Filtered Token Experiment (token_id NOT IN [0, 2])', fontsize=12)
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Add fine grid with 0.01 spacing
+    plt.grid(True, alpha=0.3, which='major')
+    plt.grid(True, alpha=0.1, which='minor', linewidth=0.5)
+    plt.minorticks_on()
+    
+    # Set minor ticks for fine grid
+    ax = plt.gca()
+    ax.set_xticks(np.arange(0, 0.18, 0.01), minor=True)
+    ax.set_yticks(np.arange(0.4, 0.75, 0.01), minor=True)
+    
+    # Set major y-axis ticks every 0.1 with thick labels
+    ax.set_yticks(np.arange(0.4, 0.75, 0.1), minor=False)
+    ax.tick_params(axis='y', which='major', width=2, length=6)
+    
+    # Rotate x-axis labels by 45 degrees
+    plt.xticks(rotation=45)
+    
+    plt.ylim(0.4, 0.75)
+
+    plt.tight_layout()
+    plt.savefig('filtered_token_threshold_analysis.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
     # Print summary statistics
     print(f"\n{'='*80}")
     print("THRESHOLD ANALYSIS SUMMARY")
@@ -380,13 +544,20 @@ def main():
     for exp_name, data in ml_results.items():
         max_balanced_acc = max(data['balanced_accuracies'])
         best_threshold = data['thresholds'][data['balanced_accuracies'].index(max_balanced_acc)]
-        print(f"  {exp_name:<25}: {max_balanced_acc:.4f} at threshold {best_threshold:.2f}")
+        print(f"  {exp_name:<35}: {max_balanced_acc:.4f} at threshold {best_threshold:.3f}")
 
     print("\nGradCAM Ablation - Best Balanced Accuracy by Experiment:")
     for exp_name, data in gradcam_results.items():
         max_balanced_acc = max(data['balanced_accuracies'])
         best_threshold = data['thresholds'][data['balanced_accuracies'].index(max_balanced_acc)]
-        print(f"  {exp_name:<25}: {max_balanced_acc:.4f} at threshold {best_threshold:.2f}")
+        print(f"  {exp_name:<35}: {max_balanced_acc:.4f} at threshold {best_threshold:.3f}")
+
+    print("\nFiltered Token Experiment - Best Balanced Accuracy by Experiment:")
+    print("(GradCAM features computed from tokens with token_id NOT IN [0, 2])")
+    for exp_name, data in filtered_results.items():
+        max_balanced_acc = max(data['balanced_accuracies'])
+        best_threshold = data['thresholds'][data['balanced_accuracies'].index(max_balanced_acc)]
+        print(f"  {exp_name:<35}: {max_balanced_acc:.4f} at threshold {best_threshold:.3f}")
 
 if __name__ == "__main__":
     main()
