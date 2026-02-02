@@ -25,3 +25,5 @@ seaborn_scatter_token_loss_vs_gradcam_coverage.png
 seaborn_scatter_token_loss_vs_gradcam_entropy.png
 seaborn_scatter_token_loss_vs_gradcam_gini.png
 filtered_entropy_loss_threshold_analysis.png
+READ16-data
+READ16.zip

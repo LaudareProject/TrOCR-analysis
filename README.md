@@ -51,9 +51,19 @@ Tests different training configurations on the Cortonese dataset using Microsoft
 Outputs performance metrics (CER, WER) and comparison plots across configurations.
 
 ### Cross-Validation on Public READ-16 Dataset
+
+Download data from https://doi.org/10.5281/zenodo.1297399
+
+```bash
+curl 'https://zenodo.org/api/records/1297399/files-archive' --output 'READ16.zip'
+```
+
+Place the archive in the current directory and name it `READ16.zip`. Then run:
+
 ```bash
 uv run python read16_crossval.py
 ```
+
 Performs cross-validation of the best full fine-tuned Cortonese model on READ-16. Outputs CER/WER metrics.
 
 ### Token-Level GradCAM & Attention Analysis (Cortonese dataset)
