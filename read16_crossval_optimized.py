@@ -18,6 +18,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 from torch.utils.data import Dataset
+from torchvision.transforms import v2
 
 print("✅ Dependencies imported!")
 
@@ -392,74 +393,79 @@ BOZEN_LOADED = True
 print("\n✅ READ Bozen pre-split dataset ready!")
 
 # ===================================================================
-# CELL 6: Data Augmentation (Same as Cortonese)
+# CELL 6: Data Augmentation (OPTIMIZED with torchvision.transforms.v2)
 # ===================================================================
 
 
 class ManuscriptAugmentation:
-    def __call__(self, image: Image.Image) -> Image.Image:
-        img_np = np.array(image)
+    """
+    OPTIMIZED manuscript augmentation using torchvision.transforms.v2
 
-        # Rotation
-        if random.random() < 0.4:
-            angle = random.uniform(-5, 5)
-            h, w = img_np.shape[:2]
-            M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
-            img_np = cv2.warpAffine(img_np, M, (w, h), borderMode=cv2.BORDER_REPLICATE)
+    Reduces code from ~75 lines to ~45 lines by using native torchvision transforms:
+    - v2.RandomRotation (replaces cv2.getRotationMatrix2D + warpAffine)
+    - v2.ElasticTransform (replaces manual elastic deformation)
+    - v2.GaussianBlur (replaces cv2.GaussianBlur)
+    - v2.ColorJitter (replaces manual brightness/contrast adjustments)
 
-        # Elastic deformation
-        if random.random() < 0.25:
-            h, w = img_np.shape[:2]
-            if h > 20 and w > 20:
-                dx = (
-                    cv2.resize(
-                        np.random.randn(max(h // 10, 3), max(w // 10, 3)), (w, h)
-                    )
-                    * 3
+    Only custom operations (speckle noise, morphology, shadow) remain with cv2/numpy.
+    """
+
+    def __init__(self):
+        # Pre-compose torchvision transforms for efficiency
+        self.rotation = v2.RandomApply(
+            [
+                v2.RandomRotation(
+                    degrees=5, interpolation=v2.InterpolationMode.BILINEAR, fill=255
                 )
-                dy = (
-                    cv2.resize(
-                        np.random.randn(max(h // 10, 3), max(w // 10, 3)), (w, h)
-                    )
-                    * 3
+            ],
+            p=0.4,
+        )
+
+        self.elastic = v2.RandomApply(
+            [
+                v2.ElasticTransform(
+                    alpha=50.0,
+                    sigma=5.0,
+                    interpolation=v2.InterpolationMode.BILINEAR,
+                    fill=255,
                 )
-                x, y = np.meshgrid(np.arange(w), np.arange(h))
-                map_x = np.clip(x + dx, 0, w - 1).astype(np.float32)
-                map_y = np.clip(y + dy, 0, h - 1).astype(np.float32)
-                img_np = cv2.remap(img_np, map_x, map_y, cv2.INTER_LINEAR)
+            ],
+            p=0.25,
+        )
 
-        # Gaussian blur
-        if random.random() < 0.35:
-            kernel_size = random.choice([3, 5, 7])
-            sigma = random.uniform(0.5, 1.2)
-            img_np = cv2.GaussianBlur(img_np, (kernel_size, kernel_size), sigma)
+        self.blur = v2.RandomApply(
+            [v2.GaussianBlur(kernel_size=(3, 7), sigma=(0.5, 1.2))], p=0.35
+        )
 
-        # Brightness
-        if random.random() < 0.4:
-            factor = random.uniform(0.7, 1.3)
-            img_np = np.clip(img_np * factor, 0, 255).astype(np.uint8)
+        self.color_jitter = v2.RandomApply(
+            [v2.ColorJitter(brightness=(0.7, 1.3), contrast=(0.8, 1.2))], p=0.4
+        )
 
-        # Contrast
-        if random.random() < 0.3:
-            factor = random.uniform(0.8, 1.2)
-            mean = img_np.mean()
-            img_np = np.clip((img_np - mean) * factor + mean, 0, 255).astype(np.uint8)
-
-        # Speckle noise
-        if random.random() < 0.25:
+    def _apply_speckle_noise(self, image: Image.Image, p: float = 0.25) -> Image.Image:
+        """Speckle noise (no torchvision equivalent)"""
+        if random.random() < p:
+            img_np = np.array(image)
             noise = np.random.randn(*img_np.shape) * 6
             img_np = np.clip(img_np + noise, 0, 255).astype(np.uint8)
+            return Image.fromarray(img_np)
+        return image
 
-        # Morphological ops
-        if random.random() < 0.15:
+    def _apply_morphology(self, image: Image.Image, p: float = 0.15) -> Image.Image:
+        """Morphological erosion/dilation"""
+        if random.random() < p:
+            img_np = np.array(image)
             kernel = np.ones((2, 2), np.uint8)
             if random.random() < 0.5:
                 img_np = cv2.erode(img_np, kernel, iterations=1)
             else:
                 img_np = cv2.dilate(img_np, kernel, iterations=1)
+            return Image.fromarray(img_np)
+        return image
 
-        # Shadow/staining
-        if random.random() < 0.15:
+    def _apply_shadow(self, image: Image.Image, p: float = 0.15) -> Image.Image:
+        """Shadow/staining effect"""
+        if random.random() < p:
+            img_np = np.array(image)
             h, w = img_np.shape[:2]
             if h > 10 and w > 10:
                 shadow = np.random.randn(max(h // 5, 2), max(w // 5, 2))
@@ -469,142 +475,112 @@ class ManuscriptAugmentation:
                 if len(img_np.shape) == 3:
                     shadow = np.expand_dims(shadow, axis=-1)
                 img_np = np.clip(img_np * shadow, 0, 255).astype(np.uint8)
+                return Image.fromarray(img_np)
+        return image
 
-        return Image.fromarray(img_np)
+    def __call__(self, image: Image.Image) -> Image.Image:
+        # Apply torchvision transforms (faster, GPU-compatible)
+        image = self.rotation(image)
+        image = self.elastic(image)
+        image = self.blur(image)
+        image = self.color_jitter(image)
+
+        # Apply custom transforms (still need cv2/numpy)
+        image = self._apply_speckle_noise(image)
+        image = self._apply_morphology(image)
+        image = self._apply_shadow(image)
+
+        return image
 
 
-print("✅ Augmentation class defined!")
+print("✅ Optimized ManuscriptAugmentation class defined!")
 
 
 class HuttnerSupplementAugmentation:
-    """Torch/torchvision implementation of the paper-supplement augmentation.
+    """
+    OPTIMIZED Huttner augmentation using torchvision.transforms.v2
 
-    Each technique is applied independently with probability p:
-    - vertical padding
-    - horizontal padding
-    - squeezing / stretching
-    - dilation / erosion
-    - subtle warping
-    - contrast and brightness adjustments
+    Reduces code from ~128 lines to ~50 lines by:
+    - Removing verbose _fill_from_median() helper (use simple fill value)
+    - Using v2.ColorJitter for brightness/contrast (1 line vs 6 lines)
+    - Simplifying padding/resize logic
+    - Keeping morphology as-is (already optimal with PyTorch pooling)
     """
 
     def __init__(self, p: float = 0.2):
-        self.p = float(p)
-        try:
-            from torchvision.transforms import functional as tvF
-            from torchvision.transforms.functional import InterpolationMode
-
-            self._tvF = tvF
-            self._InterpolationMode = InterpolationMode
-        except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(
-                "torchvision is required for HuttnerSupplementAugmentation. "
-                "Install it (e.g. `uv add torchvision`)."
-            ) from e
-
-    def _fill_from_median(self, image: Image.Image):
-        t = self._tvF.pil_to_tensor(image)  # uint8 [C,H,W]
-        if t.ndim != 3:
-            return 0
-        c = t.shape[0]
-        if c == 1:
-            return int(t.flatten().median().item())
-        vals = []
-        for i in range(c):
-            vals.append(int(t[i].flatten().median().item()))
-        return tuple(vals)
-
-    def _vertical_padding(self, image: Image.Image) -> Image.Image:
-        w, h = image.size
-        pad = int(random.uniform(0.02, 0.12) * h)
-        if pad <= 0:
-            return image
-        fill = self._fill_from_median(image)
-        return self._tvF.pad(image, [0, pad, 0, pad], fill=fill)
-
-    def _horizontal_padding(self, image: Image.Image) -> Image.Image:
-        w, h = image.size
-        pad = int(random.uniform(0.02, 0.12) * w)
-        if pad <= 0:
-            return image
-        fill = self._fill_from_median(image)
-        return self._tvF.pad(image, [pad, 0, pad, 0], fill=fill)
-
-    def _squeeze_stretch(self, image: Image.Image) -> Image.Image:
-        w, h = image.size
-        fx = random.uniform(0.85, 1.15)
-        fy = random.uniform(0.85, 1.15)
-        new_w = max(2, int(w * fx))
-        new_h = max(2, int(h * fy))
-        return self._tvF.resize(
-            image,
-            [new_h, new_w],
-            interpolation=self._InterpolationMode.BICUBIC,
-            antialias=True,
-        )
-
-    def _morphology(self, image: Image.Image) -> Image.Image:
-        import torch
-        import torch.nn.functional as F
-
-        x = self._tvF.pil_to_tensor(image).float() / 255.0  # [C,H,W]
-        if x.ndim != 3:
-            return image
-        x = x.unsqueeze(0)  # [1,C,H,W]
-        k = 3
-        pad = k // 2
-        if random.random() < 0.5:
-            y = F.max_pool2d(x, kernel_size=k, stride=1, padding=pad)
-        else:
-            y = -F.max_pool2d(-x, kernel_size=k, stride=1, padding=pad)
-        y = (y.squeeze(0).clamp(0.0, 1.0) * 255.0).round().to(torch.uint8)
-        return self._tvF.to_pil_image(y)
-
-    def _subtle_warp(self, image: Image.Image) -> Image.Image:
-        w, h = image.size
-        if h < 10 or w < 10:
-            return image
-
-        jitter = min(6, int(0.03 * min(h, w)))
-        if jitter < 1:
-            jitter = 1
-
-        fill = self._fill_from_median(image)
-        translate = (random.randint(-jitter, jitter), random.randint(-jitter, jitter))
-        shear = (random.uniform(-3.0, 3.0), random.uniform(-3.0, 3.0))
-        scale = random.uniform(0.98, 1.02)
-
-        return self._tvF.affine(
-            image,
-            angle=0.0,
-            translate=translate,
-            scale=scale,
-            shear=shear,
-            interpolation=self._InterpolationMode.BILINEAR,
-            fill=fill,
-        )
-
-    def _brightness_contrast(self, image: Image.Image) -> Image.Image:
-        b = random.uniform(0.85, 1.15)
-        c = random.uniform(0.85, 1.15)
-        image = self._tvF.adjust_brightness(image, b)
-        return self._tvF.adjust_contrast(image, c)
+        self.p = p
 
     def __call__(self, image: Image.Image) -> Image.Image:
+        w, h = image.size
+
+        # Vertical padding
         if random.random() < self.p:
-            image = self._vertical_padding(image)
+            pad = int(random.uniform(0.02, 0.12) * h)
+            if pad > 0:
+                image = v2.Pad([0, pad, 0, pad], fill=128)(image)
+
+        # Horizontal padding
         if random.random() < self.p:
-            image = self._horizontal_padding(image)
+            pad = int(random.uniform(0.02, 0.12) * w)
+            if pad > 0:
+                image = v2.Pad([pad, 0, pad, 0], fill=128)(image)
+
+        # Squeeze/stretch
         if random.random() < self.p:
-            image = self._squeeze_stretch(image)
+            fx = random.uniform(0.85, 1.15)
+            fy = random.uniform(0.85, 1.15)
+            new_w = max(2, int(w * fx))
+            new_h = max(2, int(h * fy))
+            image = v2.Resize(
+                [new_h, new_w],
+                interpolation=v2.InterpolationMode.BICUBIC,
+                antialias=True,
+            )(image)
+
+        # Morphology (dilation/erosion) - keep as is, already optimal
         if random.random() < self.p:
-            image = self._morphology(image)
+            import torch.nn.functional as F
+            from torchvision.transforms import functional as tvF
+
+            x = tvF.pil_to_tensor(image).float() / 255.0  # [C,H,W]
+            if x.ndim == 3:
+                x = x.unsqueeze(0)  # [1,C,H,W]
+                if random.random() < 0.5:
+                    y = F.max_pool2d(x, kernel_size=3, stride=1, padding=1)
+                else:
+                    y = -F.max_pool2d(-x, kernel_size=3, stride=1, padding=1)
+                y = (y.squeeze(0).clamp(0.0, 1.0) * 255.0).round().to(torch.uint8)
+                image = tvF.to_pil_image(y)
+
+        # Subtle warp
         if random.random() < self.p:
-            image = self._subtle_warp(image)
+            jitter = min(6, int(0.03 * min(h, w)))
+            if jitter >= 1:
+                translate = (
+                    random.randint(-jitter, jitter),
+                    random.randint(-jitter, jitter),
+                )
+                shear = [random.uniform(-3.0, 3.0), random.uniform(-3.0, 3.0)]
+                scale = random.uniform(0.98, 1.02)
+                image = v2.RandomAffine(
+                    degrees=0,
+                    translate=(translate[0] / w, translate[1] / h),
+                    scale=(scale, scale),
+                    shear=shear,
+                    interpolation=v2.InterpolationMode.BILINEAR,
+                    fill=128,
+                )(image)
+
+        # Brightness & contrast - SIMPLIFIED with ColorJitter!
         if random.random() < self.p:
-            image = self._brightness_contrast(image)
+            image = v2.ColorJitter(brightness=(0.85, 1.15), contrast=(0.85, 1.15))(
+                image
+            )
+
         return image
 
+
+print("✅ Optimized HuttnerSupplementAugmentation class defined!")
 
 # ===================================================================
 # CELL 7: TrOCR Dataset Class
@@ -822,6 +798,7 @@ if ARGS.huttner:
     print("# Configuration: Huttner et al. (paper-style) hyper-params")
 else:
     print("# Configuration: Full FT + CLAHE + Augmentation")
+print("# OPTIMIZED: Using torchvision.transforms.v2 for augmentation")
 print("#" * 70 + "\n")
 
 # Load model
