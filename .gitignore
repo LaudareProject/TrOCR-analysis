@@ -27,3 +27,4 @@ seaborn_scatter_token_loss_vs_gradcam_gini.png
 filtered_entropy_loss_threshold_analysis.png
 READ16-data
 READ16.zip
+bozen_training_output/bozen_presplit_20260202_144238/checkpoints

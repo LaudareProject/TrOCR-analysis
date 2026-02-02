@@ -651,12 +651,18 @@ MODEL_NAME = "microsoft/trocr-base-handwritten"
 processor = TrOCRProcessor.from_pretrained(MODEL_NAME)
 model = VisionEncoderDecoderModel.from_pretrained(MODEL_NAME)
 
-# Configure
+# Configure model
 model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
 model.config.eos_token_id = processor.tokenizer.eos_token_id
 model.config.pad_token_id = processor.tokenizer.pad_token_id
 model.config.vocab_size = len(processor.tokenizer)
-model.config.max_length = 128
+
+# Configure generation (use generation_config instead of model.config)
+model.generation_config.max_length = 128
+model.generation_config.early_stopping = True
+model.generation_config.no_repeat_ngram_size = 3
+model.generation_config.length_penalty = 2.0
+model.generation_config.num_beams = 4
 
 # Full fine-tuning
 for param in model.parameters():
