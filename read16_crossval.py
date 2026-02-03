@@ -30,9 +30,10 @@ def _parse_args():
         "--huttner",
         action="store_true",
         help=(
-            "Use (as close as possible) the hyper-parameters described in "
-            "Huttner et al., WACVW 2025: AdamW + One-Cycle LR, wd=1e-4, bs=8, "
-            "no augmentation, no contrast enhancement."
+            "Use Huttner et al. (WACVW 2025) hyperparameters: AdamW + One-Cycle LR, "
+            "wd=1e-4, bs=8. By default uses HuttnerSupplementAugmentation and no CLAHE. "
+            "Can be combined with --custom-aug to use Huttner hyperparameters with "
+            "ManuscriptAugmentation + CLAHE instead."
         ),
     )
     parser.add_argument(
@@ -53,10 +54,27 @@ def _parse_args():
             "default here is 0.1. Used when --huttner."
         ),
     )
+    parser.add_argument(
+        "--custom-aug",
+        action="store_true",
+        help=(
+            "Use custom configuration: ManuscriptAugmentation + CLAHE + standard hyperparameters. "
+            "Can be combined with --huttner to use Huttner hyperparameters instead of standard ones."
+        ),
+    )
     return parser.parse_args()
 
 
 ARGS = _parse_args()
+
+# Validate that at least one flag is provided
+if not ARGS.huttner and not ARGS.custom_aug:
+    raise ValueError(
+        "❌ ERROR: You must specify at least one configuration flag:\n"
+        "  --huttner        → Huttner hyperparams + HuttnerSupplementAugmentation + no CLAHE\n"
+        "  --custom-aug     → Standard hyperparams + ManuscriptAugmentation + CLAHE\n"
+        "  --huttner --custom-aug → Huttner hyperparams + ManuscriptAugmentation + CLAHE\n"
+    )
 
 # ===================================================================
 # CELL 2: Extract READ16.zip
@@ -818,10 +836,14 @@ from transformers import (
 
 print("\n" + "#" * 70)
 print("# PUBLIC DATASET VALIDATION: READ Bozen (Pre-split)")
-if ARGS.huttner:
-    print("# Configuration: Huttner et al. (paper-style) hyper-params")
-else:
-    print("# Configuration: Full FT + CLAHE + Augmentation")
+if ARGS.huttner and ARGS.custom_aug:
+    print("# Configuration: Huttner hyperparams + ManuscriptAugmentation + CLAHE")
+elif ARGS.huttner:
+    print(
+        "# Configuration: Huttner hyperparams + HuttnerSupplementAugmentation + no CLAHE"
+    )
+elif ARGS.custom_aug:
+    print("# Configuration: Standard hyperparams + ManuscriptAugmentation + CLAHE")
 print("#" * 70 + "\n")
 
 # Load model
@@ -853,23 +875,36 @@ print(f"Trainable parameters: {trainable:,} (100%)\n")
 
 # Create datasets - NOTE: Each split uses its own image directory
 
-if ARGS.huttner:
-    USE_AUG = True
-    USE_CLAHE = False
-    MAX_TARGET_LENGTH = 128
-else:
-    USE_AUG = True
-    USE_CLAHE = True
-    MAX_TARGET_LENGTH = 128
+# Determine augmentation and CLAHE settings based on flags
+# Three configurations:
+# 1. --huttner only: HuttnerSupplementAugmentation, no CLAHE, Huttner hyperparams
+# 2. --custom-aug only: ManuscriptAugmentation, CLAHE, standard hyperparams
+# 3. --huttner --custom-aug: ManuscriptAugmentation, CLAHE, Huttner hyperparams
 
-if USE_AUG:
-    aug = (
-        HuttnerSupplementAugmentation(p=0.2)
-        if ARGS.huttner
-        else ManuscriptAugmentation()
-    )
-else:
-    aug = None
+if ARGS.huttner and ARGS.custom_aug:
+    # Huttner hyperparams + Custom augmentation + CLAHE
+    aug = ManuscriptAugmentation()
+    USE_CLAHE = True
+    aug_name = "ManuscriptAugmentation"
+elif ARGS.huttner:
+    # Huttner paper setup: HuttnerSupplementAugmentation, no CLAHE
+    aug = HuttnerSupplementAugmentation(p=0.2)
+    USE_CLAHE = False
+    aug_name = "HuttnerSupplementAugmentation"
+elif ARGS.custom_aug:
+    # Custom augmentation with standard hyperparams + CLAHE
+    aug = ManuscriptAugmentation()
+    USE_CLAHE = True
+    aug_name = "ManuscriptAugmentation"
+
+MAX_TARGET_LENGTH = 128
+
+print(f"Augmentation: {aug_name}")
+print(f"CLAHE: {USE_CLAHE}")
+print(
+    f"Hyperparameters: {'Huttner (AdamW + OneCycle)' if ARGS.huttner else 'Standard (AdamW + warmup)'}"
+)
+print()
 
 train_dataset = TrOCRDataset(
     bozen_train_annotations,
