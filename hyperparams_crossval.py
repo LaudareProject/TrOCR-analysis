@@ -27,6 +27,16 @@ def _parse_args():
         description="READ16 (Bozen) TrOCR fine-tuning / evaluation script"
     )
     parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["read16", "I-Ct_91"],
+        required=True,
+        help=(
+            "Dataset to use: 'read16' (READ16 Bozen dataset) or 'I-Ct_91' (I-Ct_91 dataset). "
+            "This argument is required."
+        ),
+    )
+    parser.add_argument(
         "--huttner",
         action="store_true",
         help=(
@@ -77,7 +87,7 @@ if not ARGS.huttner and not ARGS.custom_aug:
     )
 
 # ===================================================================
-# CELL 2: Extract READ16.zip
+# CELL 2: Extract READ16.zip (only for read16 dataset)
 # ===================================================================
 
 # Get the script directory
@@ -86,104 +96,138 @@ SCRIPT_DIR = Path(__file__).parent if "__file__" in globals() else Path.cwd()
 # Define paths relative to script location
 ZIP_FILE = SCRIPT_DIR / "READ16.zip"
 EXTRACT_DIR = SCRIPT_DIR / "READ16-data"
+I_CT_91_DIR = SCRIPT_DIR / "I-Ct_91"
 
-# Check if data is already extracted (check for a specific file to be sure)
-train_check = EXTRACT_DIR / "PublicData" / "Training" / "Images"
-if train_check.exists() and len(list(train_check.glob("*.JPG"))) > 0:
-    print(f"✅ Dataset already extracted at {EXTRACT_DIR}")
-else:
-    # Check if the .zip file exists
-    if not ZIP_FILE.exists():
-        raise FileNotFoundError(
-            f"❌ READ16.zip not found at {ZIP_FILE}\n"
-            f"Please download the dataset and place it in {SCRIPT_DIR}"
-        )
+if ARGS.dataset == "read16":
+    # Check if data is already extracted (check for a specific file to be sure)
+    train_check = EXTRACT_DIR / "PublicData" / "Training" / "Images"
+    if train_check.exists() and len(list(train_check.glob("*.JPG"))) > 0:
+        print(f"✅ Dataset already extracted at {EXTRACT_DIR}")
+    else:
+        # Check if the .zip file exists
+        if not ZIP_FILE.exists():
+            raise FileNotFoundError(
+                f"❌ READ16.zip not found at {ZIP_FILE}\n"
+                f"Please download the dataset and place it in {SCRIPT_DIR}"
+            )
 
-    # Create extraction directory
-    EXTRACT_DIR.mkdir(exist_ok=True)
-    temp_extract = SCRIPT_DIR / "READ16-data-temp"
-    temp_extract.mkdir(exist_ok=True)
+        # Create extraction directory
+        EXTRACT_DIR.mkdir(exist_ok=True)
+        temp_extract = SCRIPT_DIR / "READ16-data-temp"
+        temp_extract.mkdir(exist_ok=True)
 
-    try:
-        # Step 1: Extract ZIP file
-        print(f"📦 Extracting {ZIP_FILE.name}...")
-        with zipfile.ZipFile(ZIP_FILE, "r") as z:
-            z.extractall(temp_extract)
-        print(f"✅ ZIP extracted!")
+        try:
+            # Step 1: Extract ZIP file
+            print(f"📦 Extracting {ZIP_FILE.name}...")
+            with zipfile.ZipFile(ZIP_FILE, "r") as z:
+                z.extractall(temp_extract)
+            print(f"✅ ZIP extracted!")
 
-        # Step 2: Extract the tar.gz files from the ZIP
-        tgz_files = list(temp_extract.glob("*.tgz"))
-        print(f"\n📦 Found {len(tgz_files)} tar.gz files to extract...")
+            # Step 2: Extract the tar.gz files from the ZIP
+            tgz_files = list(temp_extract.glob("*.tgz"))
+            print(f"\n📦 Found {len(tgz_files)} tar.gz files to extract...")
 
-        for tgz_file in tgz_files:
-            print(f"   Extracting {tgz_file.name}...")
-            with tarfile.open(tgz_file, "r:gz") as tar:
-                tar.extractall(EXTRACT_DIR)
-            print(f"   ✅ {tgz_file.name} extracted!")
+            for tgz_file in tgz_files:
+                print(f"   Extracting {tgz_file.name}...")
+                with tarfile.open(tgz_file, "r:gz") as tar:
+                    tar.extractall(EXTRACT_DIR)
+                print(f"   ✅ {tgz_file.name} extracted!")
 
-        # Cleanup temp directory
-        shutil.rmtree(temp_extract)
-        print(f"\n✅ Extraction complete!")
-
-    except Exception as e:
-        # Cleanup on error
-        if temp_extract.exists():
+            # Cleanup temp directory
             shutil.rmtree(temp_extract)
-        raise RuntimeError(f"❌ Failed to extract archive: {e}")
+            print(f"\n✅ Extraction complete!")
 
-# List extracted contents
-print("\n📁 Dataset structure:")
-for item in sorted(EXTRACT_DIR.iterdir()):
-    if item.is_dir():
-        print(f"   📁 {item.name}/")
+        except Exception as e:
+            # Cleanup on error
+            if temp_extract.exists():
+                shutil.rmtree(temp_extract)
+            raise RuntimeError(f"❌ Failed to extract archive: {e}")
+
+    # List extracted contents
+    print("\n📁 Dataset structure:")
+    for item in sorted(EXTRACT_DIR.iterdir()):
+        if item.is_dir():
+            print(f"   📁 {item.name}/")
+elif ARGS.dataset == "I-Ct_91":
+    # Check if I-Ct_91 directory exists
+    if not I_CT_91_DIR.exists():
+        raise FileNotFoundError(
+            f"❌ I-Ct_91 directory not found at {I_CT_91_DIR}\n"
+            f"Please ensure the I-Ct_91 dataset is available"
+        )
+    print(f"✅ Using I-Ct_91 dataset at {I_CT_91_DIR}")
 
 # ===================================================================
 # CELL 3: Configuration and Path Setup
 # ===================================================================
 
 # Configuration
-# Use the extracted READ16-data directory
-LOCAL_READ_BOZEN = EXTRACT_DIR
-OUTPUT_BASE = SCRIPT_DIR / "bozen_training_output"
+if ARGS.dataset == "read16":
+    # Use the extracted READ16-data directory
+    LOCAL_READ_BOZEN = EXTRACT_DIR
+    OUTPUT_BASE = SCRIPT_DIR / "bozen_training_output"
 
-OUTPUT_BASE.mkdir(exist_ok=True)
+    OUTPUT_BASE.mkdir(exist_ok=True)
 
-# Set up dataset paths based on extracted structure
-BOZEN_TRAIN_IMG_DIR = LOCAL_READ_BOZEN / "PublicData" / "Training" / "Images"
-BOZEN_TRAIN_PAGE_DIR = LOCAL_READ_BOZEN / "PublicData" / "Training" / "page"
+    # Set up dataset paths based on extracted structure
+    BOZEN_TRAIN_IMG_DIR = LOCAL_READ_BOZEN / "PublicData" / "Training" / "Images"
+    BOZEN_TRAIN_PAGE_DIR = LOCAL_READ_BOZEN / "PublicData" / "Training" / "page"
 
-BOZEN_VAL_IMG_DIR = LOCAL_READ_BOZEN / "PublicData" / "Validation" / "Images"
-BOZEN_VAL_PAGE_DIR = LOCAL_READ_BOZEN / "PublicData" / "Validation" / "page"
+    BOZEN_VAL_IMG_DIR = LOCAL_READ_BOZEN / "PublicData" / "Validation" / "Images"
+    BOZEN_VAL_PAGE_DIR = LOCAL_READ_BOZEN / "PublicData" / "Validation" / "page"
 
-BOZEN_TEST_IMG_DIR = LOCAL_READ_BOZEN / "Test-ICFHR-2016"
-BOZEN_TEST_PAGE_DIR = LOCAL_READ_BOZEN / "Test-ICFHR-2016" / "page"
+    BOZEN_TEST_IMG_DIR = LOCAL_READ_BOZEN / "Test-ICFHR-2016"
+    BOZEN_TEST_PAGE_DIR = LOCAL_READ_BOZEN / "Test-ICFHR-2016" / "page"
 
-# Count images in each split
-print("\n📊 Dataset Statistics:")
+    # Count images in each split
+    print("\n📊 Dataset Statistics:")
 
-train_img_count = len(list(BOZEN_TRAIN_IMG_DIR.glob("*.JPG"))) + len(
-    list(BOZEN_TRAIN_IMG_DIR.glob("*.jpg"))
-)
-train_xml_count = len(list(BOZEN_TRAIN_PAGE_DIR.glob("**/*.xml")))
-print(f"   TRAIN: {train_img_count} images, {train_xml_count} XML files")
-print(f"          Images: {BOZEN_TRAIN_IMG_DIR}")
-print(f"          XMLs:   {BOZEN_TRAIN_PAGE_DIR}")
+    train_img_count = len(list(BOZEN_TRAIN_IMG_DIR.glob("*.JPG"))) + len(
+        list(BOZEN_TRAIN_IMG_DIR.glob("*.jpg"))
+    )
+    train_xml_count = len(list(BOZEN_TRAIN_PAGE_DIR.glob("**/*.xml")))
+    print(f"   TRAIN: {train_img_count} images, {train_xml_count} XML files")
+    print(f"          Images: {BOZEN_TRAIN_IMG_DIR}")
+    print(f"          XMLs:   {BOZEN_TRAIN_PAGE_DIR}")
 
-val_img_count = len(list(BOZEN_VAL_IMG_DIR.glob("*.JPG"))) + len(
-    list(BOZEN_VAL_IMG_DIR.glob("*.jpg"))
-)
-val_xml_count = len(list(BOZEN_VAL_PAGE_DIR.glob("**/*.xml")))
-print(f"   VAL:   {val_img_count} images, {val_xml_count} XML files")
-print(f"          Images: {BOZEN_VAL_IMG_DIR}")
-print(f"          XMLs:   {BOZEN_VAL_PAGE_DIR}")
+    val_img_count = len(list(BOZEN_VAL_IMG_DIR.glob("*.JPG"))) + len(
+        list(BOZEN_VAL_IMG_DIR.glob("*.jpg"))
+    )
+    val_xml_count = len(list(BOZEN_VAL_PAGE_DIR.glob("**/*.xml")))
+    print(f"   VAL:   {val_img_count} images, {val_xml_count} XML files")
+    print(f"          Images: {BOZEN_VAL_IMG_DIR}")
+    print(f"          XMLs:   {BOZEN_VAL_PAGE_DIR}")
 
-test_img_count = len(list(BOZEN_TEST_IMG_DIR.glob("*.JPG"))) + len(
-    list(BOZEN_TEST_IMG_DIR.glob("*.jpg"))
-)
-test_xml_count = len(list(BOZEN_TEST_PAGE_DIR.glob("**/*.xml")))
-print(f"   TEST:  {test_img_count} images, {test_xml_count} XML files")
-print(f"          Images: {BOZEN_TEST_IMG_DIR}")
-print(f"          XMLs:   {BOZEN_TEST_PAGE_DIR}")
+    test_img_count = len(list(BOZEN_TEST_IMG_DIR.glob("*.JPG"))) + len(
+        list(BOZEN_TEST_IMG_DIR.glob("*.jpg"))
+    )
+    test_xml_count = len(list(BOZEN_TEST_PAGE_DIR.glob("**/*.xml")))
+    print(f"   TEST:  {test_img_count} images, {test_xml_count} XML files")
+    print(f"          Images: {BOZEN_TEST_IMG_DIR}")
+    print(f"          XMLs:   {BOZEN_TEST_PAGE_DIR}")
+
+elif ARGS.dataset == "I-Ct_91":
+    # Use I-Ct_91 dataset
+    IMG_DIR = I_CT_91_DIR  # Images are in the root directory
+    OUTPUT_BASE = SCRIPT_DIR / "ict91_training_output"
+    OUTPUT_BASE.mkdir(exist_ok=True)
+
+    # Annotation paths
+    ANNOTATION_DIR = I_CT_91_DIR / "annotations-diplomatic"
+    TRAIN_JSON = ANNOTATION_DIR / "ocr_train.json"
+    VAL_JSON = ANNOTATION_DIR / "ocr_val.json"
+    TEST_JSON = ANNOTATION_DIR / "ocr_test.json"
+
+    # Check files exist
+    for json_path in [TRAIN_JSON, VAL_JSON, TEST_JSON]:
+        if not json_path.exists():
+            raise FileNotFoundError(f"❌ Missing file: {json_path}")
+
+    print("\n📊 Dataset Statistics:")
+    print(f"   Images directory: {IMG_DIR}")
+    print(f"   Train JSON: {TRAIN_JSON}")
+    print(f"   Val JSON:   {VAL_JSON}")
+    print(f"   Test JSON:  {TEST_JSON}")
 
 # Device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -355,59 +399,124 @@ def load_read_bozen_dataset(page_dir, img_dir):
 print("✅ XML parser functions defined!")
 
 # ===================================================================
-# CELL 5: Load READ Bozen Dataset
+# CELL 5a: Load I-Ct_91 Dataset (if selected)
 # ===================================================================
 
-if not (
-    BOZEN_TRAIN_IMG_DIR.exists()
-    and BOZEN_VAL_IMG_DIR.exists()
-    and BOZEN_TEST_IMG_DIR.exists()
-):
-    raise RuntimeError("Dataset not ready. Check paths in Cell 3.")
 
-# Load each split separately
-print("\n📖 Loading TRAIN split...")
-bozen_train_images, bozen_train_annotations = load_read_bozen_dataset(
-    BOZEN_TRAIN_PAGE_DIR, BOZEN_TRAIN_IMG_DIR
-)
+def load_ict91_dataset(json_path):
+    """
+    Load I-Ct_91 dataset from JSON file
+    """
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
-print("\n📖 Loading VALIDATION split...")
-bozen_val_images, bozen_val_annotations = load_read_bozen_dataset(
-    BOZEN_VAL_PAGE_DIR, BOZEN_VAL_IMG_DIR
-)
+    # Filter for text-line category (category_id = 6)
+    TEXT_LINE_CATEGORY = 6
+    annotations = [
+        ann
+        for ann in data["annotations"]
+        if ann.get("category_id") == TEXT_LINE_CATEGORY
+        and ann.get("description", "").strip()
+    ]
 
-print("\n📖 Loading TEST split...")
-bozen_test_images, bozen_test_annotations = load_read_bozen_dataset(
-    BOZEN_TEST_PAGE_DIR, BOZEN_TEST_IMG_DIR
-)
+    images = data["images"]
+    return images, annotations
 
-# Create image maps for each split
-bozen_train_image_map = {img["id"]: img for img in bozen_train_images}
-bozen_val_image_map = {img["id"]: img for img in bozen_val_images}
-bozen_test_image_map = {img["id"]: img for img in bozen_test_images}
+
+# ===================================================================
+# CELL 5: Load Dataset
+# ===================================================================
+
+if ARGS.dataset == "read16":
+    if not (
+        BOZEN_TRAIN_IMG_DIR.exists()
+        and BOZEN_VAL_IMG_DIR.exists()
+        and BOZEN_TEST_IMG_DIR.exists()
+    ):
+        raise RuntimeError("Dataset not ready. Check paths in Cell 3.")
+
+    # Load each split separately
+    print("\n📖 Loading TRAIN split...")
+    bozen_train_images, bozen_train_annotations = load_read_bozen_dataset(
+        BOZEN_TRAIN_PAGE_DIR, BOZEN_TRAIN_IMG_DIR
+    )
+
+    print("\n📖 Loading VALIDATION split...")
+    bozen_val_images, bozen_val_annotations = load_read_bozen_dataset(
+        BOZEN_VAL_PAGE_DIR, BOZEN_VAL_IMG_DIR
+    )
+
+    print("\n📖 Loading TEST split...")
+    bozen_test_images, bozen_test_annotations = load_read_bozen_dataset(
+        BOZEN_TEST_PAGE_DIR, BOZEN_TEST_IMG_DIR
+    )
+
+    # Create image maps for each split
+    bozen_train_image_map = {img["id"]: img for img in bozen_train_images}
+    bozen_val_image_map = {img["id"]: img for img in bozen_val_images}
+    bozen_test_image_map = {img["id"]: img for img in bozen_test_images}
+
+    # Set unified variables for later use
+    train_annotations = bozen_train_annotations
+    val_annotations = bozen_val_annotations
+    test_annotations = bozen_test_annotations
+    train_images = bozen_train_images
+    val_images = bozen_val_images
+    test_images = bozen_test_images
+    train_image_map = bozen_train_image_map
+    val_image_map = bozen_val_image_map
+    test_image_map = bozen_test_image_map
+    TRAIN_IMG_DIR = BOZEN_TRAIN_IMG_DIR
+    VAL_IMG_DIR = BOZEN_VAL_IMG_DIR
+    TEST_IMG_DIR = BOZEN_TEST_IMG_DIR
+
+elif ARGS.dataset == "I-Ct_91":
+    print("\n📖 Loading I-Ct_91 dataset...")
+
+    # Load each split
+    print("   Loading TRAIN split...")
+    train_images, train_annotations = load_ict91_dataset(TRAIN_JSON)
+
+    print("   Loading VALIDATION split...")
+    val_images, val_annotations = load_ict91_dataset(VAL_JSON)
+
+    print("   Loading TEST split...")
+    test_images, test_annotations = load_ict91_dataset(TEST_JSON)
+
+    # Create unified image map (combine all images)
+    all_images = train_images + val_images + test_images
+    unique_images = {}
+    for img in all_images:
+        if img["id"] not in unique_images:
+            unique_images[img["id"]] = img
+    image_map = unique_images
+
+    # Create image maps for each split (all point to the same image directory)
+    train_image_map = {img["id"]: img for img in train_images}
+    val_image_map = {img["id"]: img for img in val_images}
+    test_image_map = {img["id"]: img for img in test_images}
+
+    # All splits use the same image directory for I-Ct_91
+    TRAIN_IMG_DIR = IMG_DIR
+    VAL_IMG_DIR = IMG_DIR
+    TEST_IMG_DIR = IMG_DIR
 
 print(f"\n{'=' * 70}")
-print("PRE-SPLIT DATASET LOADED")
+print(f"DATASET LOADED: {ARGS.dataset.upper()}")
 print(f"{'=' * 70}")
-print(
-    f"Train: {len(bozen_train_annotations)} text lines from {len(bozen_train_images)} pages"
-)
-print(
-    f"Val:   {len(bozen_val_annotations)} text lines from {len(bozen_val_images)} pages"
-)
-print(
-    f"Test:  {len(bozen_test_annotations)} text lines from {len(bozen_test_images)} pages"
-)
+print(f"Train: {len(train_annotations)} text lines from {len(train_images)} pages")
+print(f"Val:   {len(val_annotations)} text lines from {len(val_images)} pages")
+print(f"Test:  {len(test_annotations)} text lines from {len(test_images)} pages")
 print(f"{'=' * 70}\n")
 
 # Show samples from each split
 print("Sample text lines from TRAIN:")
-for i in range(min(3, len(bozen_train_annotations))):
-    sample = bozen_train_annotations[i]
+for i in range(min(3, len(train_annotations))):
+    sample = train_annotations[i]
     print(f"  {i + 1}. {sample['description'][:60]}...")
 
 BOZEN_LOADED = True
-print("\n✅ READ Bozen pre-split dataset ready!")
+print(f"\n✅ {ARGS.dataset.upper()} dataset ready!")
 
 # ===================================================================
 # CELL 6: Data Augmentation (Same as Cortonese)
@@ -835,7 +944,7 @@ from transformers import (
 )
 
 print("\n" + "#" * 70)
-print("# PUBLIC DATASET VALIDATION: READ Bozen (Pre-split)")
+print(f"# DATASET: {ARGS.dataset.upper()}")
 if ARGS.huttner and ARGS.custom_aug:
     print("# Configuration: Huttner hyperparams + ManuscriptAugmentation + CLAHE")
 elif ARGS.huttner:
@@ -907,9 +1016,9 @@ print(
 print()
 
 train_dataset = TrOCRDataset(
-    bozen_train_annotations,
-    bozen_train_images,
-    BOZEN_TRAIN_IMG_DIR,  # Train images
+    train_annotations,
+    train_images,
+    TRAIN_IMG_DIR,
     processor,
     max_target_length=MAX_TARGET_LENGTH,
     augment_transform=aug,
@@ -917,9 +1026,9 @@ train_dataset = TrOCRDataset(
 )
 
 val_dataset = TrOCRDataset(
-    bozen_val_annotations,
-    bozen_val_images,
-    BOZEN_VAL_IMG_DIR,  # Validation images
+    val_annotations,
+    val_images,
+    VAL_IMG_DIR,
     processor,
     max_target_length=MAX_TARGET_LENGTH,
     augment_transform=None,
@@ -927,9 +1036,9 @@ val_dataset = TrOCRDataset(
 )
 
 test_dataset = TrOCRDataset(
-    bozen_test_annotations,
-    bozen_test_images,
-    BOZEN_TEST_IMG_DIR,  # Test images
+    test_annotations,
+    test_images,
+    TEST_IMG_DIR,
     processor,
     max_target_length=MAX_TARGET_LENGTH,
     augment_transform=None,
@@ -942,7 +1051,8 @@ print(
 
 # Training args
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-out_dir = OUTPUT_BASE / f"bozen_presplit_{timestamp}"
+dataset_prefix = "bozen" if ARGS.dataset == "read16" else "ict91"
+out_dir = OUTPUT_BASE / f"{dataset_prefix}_presplit_{timestamp}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
 
@@ -1118,14 +1228,19 @@ try:
     test_result = trainer.predict(test_dataset)
 
     # Save
+    dataset_name = (
+        "READ Bozen (1470-1805) - Pre-split"
+        if ARGS.dataset == "read16"
+        else "I-Ct_91 - Pre-split"
+    )
     results = {
-        "dataset": "READ Bozen (1470-1805) - Pre-split",
+        "dataset": dataset_name,
         "splits": {
             "train": f"{len(train_dataset)} lines",
             "val": f"{len(val_dataset)} lines",
             "test": f"{len(test_dataset)} lines",
         },
-        "config": {"use_clahe": True, "use_aug": True, "freeze_layers": 0},
+        "config": {"use_clahe": USE_CLAHE, "use_aug": True, "freeze_layers": 0},
         "train_metrics": train_result.metrics,
         "test_metrics": test_result.metrics,
     }

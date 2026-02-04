@@ -61,10 +61,19 @@ curl 'https://zenodo.org/api/records/1297399/files-archive' --output 'READ16.zip
 Place the archive in the current directory and name it `READ16.zip`. Then run:
 
 ```bash
-uv run python read16_crossval.py
+uv run python hyperparams_crossval.py
 ```
 
-Performs cross-validation of the best full fine-tuned Cortonese model on READ-16. Outputs CER/WER metrics.
+Performs cross-validation of the hyper-parameters between READ16 and I-Ct_91, comparing with Hüttner
+et al. (2025) hyper-parameters. Note that we don't have the exact details about the Hüttner's
+augmentation implementation and our implementation of their policy doesn't show any difference in
+the test results.
+
+#### Obtained results
+
+- `--huttner --custom-aug --dataset read16`:
+    - Test CER: 5.16%
+    - Test WER: 21.18%
 
 ### Token-Level GradCAM & Attention Analysis (Cortonese dataset)
 ```bash
