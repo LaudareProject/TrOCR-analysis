@@ -213,7 +213,7 @@ elif ARGS.dataset == "I-Ct_91":
     OUTPUT_BASE.mkdir(exist_ok=True)
 
     # Annotation paths
-    ANNOTATION_DIR = I_CT_91_DIR / "annotations-diplomatic"
+    ANNOTATION_DIR = I_CT_91_DIR / "annotations-diplomatic" / "processed_splits" / "train_test_0"
     TRAIN_JSON = ANNOTATION_DIR / "ocr_train.json"
     VAL_JSON = ANNOTATION_DIR / "ocr_val.json"
     TEST_JSON = ANNOTATION_DIR / "ocr_test.json"
