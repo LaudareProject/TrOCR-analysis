@@ -79,6 +79,10 @@ the test results.
     - Test CER: 7.81%
     - Test WER: 30.40%
 
+- `--custom-aug --dataset I-Ct_91`:
+    - Test CER: 9.55%
+    - Test WER: 34.72%
+
 ### Token-Level GradCAM & Attention Analysis (Cortonese dataset)
 ```bash
 uv run python token_gradcam_analysis.py
