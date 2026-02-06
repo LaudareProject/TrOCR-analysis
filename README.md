@@ -79,6 +79,10 @@ the test results.
     - Test CER: 7.81%
     - Test WER: 30.40%
 
+- `--custom-aug --dataset read16`:
+    - Test CER: 7.06%
+    - Test WER: 25.69%
+
 - `--custom-aug --dataset I-Ct_91`:
     - Test CER: 9.55%
     - Test WER: 34.72%
