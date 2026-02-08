@@ -72,6 +72,23 @@ def _parse_args():
             "Can be combined with --huttner to use Huttner hyperparameters instead of standard ones."
         ),
     )
+    parser.add_argument(
+        "--pretrain",
+        action="store_true",
+        help=(
+            "Pretrain the model on CATMuS/medieval dataset before fine-tuning on the selected dataset. "
+            "The model will first be trained on CATMuS train/val splits, then fine-tuned on read16 or I-Ct_91."
+        ),
+    )
+    parser.add_argument(
+        "--early-stop",
+        action="store_true",
+        help=(
+            "Enable early stopping for Huttner configuration. By default, early stopping is disabled "
+            "when using --huttner (to match the paper), but enabled for standard hyperparameters. "
+            "Use this flag to enable early stopping with Huttner hyperparameters."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -213,7 +230,9 @@ elif ARGS.dataset == "I-Ct_91":
     OUTPUT_BASE.mkdir(exist_ok=True)
 
     # Annotation paths
-    ANNOTATION_DIR = I_CT_91_DIR / "annotations-diplomatic" / "processed_splits" / "train_test_0"
+    ANNOTATION_DIR = (
+        I_CT_91_DIR / "annotations-diplomatic" / "processed_splits" / "train_test_0"
+    )
     TRAIN_JSON = ANNOTATION_DIR / "ocr_train.json"
     VAL_JSON = ANNOTATION_DIR / "ocr_val.json"
     TEST_JSON = ANNOTATION_DIR / "ocr_test.json"
@@ -833,6 +852,99 @@ class TrOCRDataset(Dataset):
 print("✅ Dataset class defined!")
 
 # ===================================================================
+# CELL 7b: CATMuS Dataset Class for Pretraining
+# ===================================================================
+
+
+class CATMuSDataset(Dataset):
+    """Dataset for CATMuS/medieval handwritten text recognition.
+
+    This dataset uses the HuggingFace datasets library to load the CATMuS/medieval dataset.
+    Images are in the 'im' column and text in the 'text' column.
+    """
+
+    def __init__(
+        self,
+        hf_dataset,
+        processor: TrOCRProcessor,
+        max_target_length=128,
+        augment_transform=None,
+        use_clahe=True,
+    ):
+        self.hf_dataset = hf_dataset
+        self.processor = processor
+        self.max_target_length = max_target_length
+        self.augment_transform = augment_transform
+        self.use_clahe = use_clahe
+
+    def preprocess_image(self, img_np):
+        """Return RGB image for the TrOCR processor.
+
+        - use_clahe=True: apply CLAHE on grayscale then convert to RGB
+        - use_clahe=False: do not apply histogram-based enhancement; convert to RGB
+        """
+
+        if self.use_clahe:
+            if len(img_np.shape) == 3:
+                gray = cv2.cvtColor(img_np, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = img_np
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            enhanced = clahe.apply(gray)
+            return cv2.cvtColor(enhanced, cv2.COLOR_GRAY2RGB)
+
+        # No contrast enhancement
+        if len(img_np.shape) == 3:
+            return cv2.cvtColor(img_np, cv2.COLOR_BGR2RGB)
+        return cv2.cvtColor(img_np, cv2.COLOR_GRAY2RGB)
+
+    def __len__(self):
+        return len(self.hf_dataset)
+
+    def __getitem__(self, idx):
+        try:
+            item = self.hf_dataset[idx]
+
+            # Get image and text from HuggingFace dataset
+            pil_image = item["im"]  # Already a PIL image
+            text = item["text"].strip() or " "
+
+            # Convert PIL to numpy for preprocessing
+            img_np = np.array(pil_image)
+
+            # Preprocess image
+            img_np = self.preprocess_image(img_np)
+            pil = Image.fromarray(img_np)
+
+            # Apply augmentation if specified
+            if self.augment_transform:
+                pil = self.augment_transform(pil)
+
+            # Process image
+            pixel_values = self.processor(
+                images=pil, return_tensors="pt"
+            ).pixel_values.squeeze(0)
+
+            # Process text - squeeze to get [128] shape
+            labels = self.processor.tokenizer(
+                text,
+                padding="max_length",
+                max_length=self.max_target_length,
+                truncation=True,
+                return_tensors="pt",
+            ).input_ids.squeeze(0)
+
+            return {"pixel_values": pixel_values, "labels": labels}
+
+        except Exception as e:
+            # Log the error and return None
+            print(f"Error processing CATMuS item {idx}: {e}")
+            return None
+
+
+print("✅ CATMuS Dataset class defined!")
+
+# ===================================================================
 # CELL 8: Data Collator
 # ===================================================================
 
@@ -932,7 +1044,7 @@ def compute_metrics(pred):
 print("✅ Metrics defined!")
 
 # ===================================================================
-# CELL 10: Train TrOCR on READ Bozen
+# CELL 9a: Import Training Components and Define Custom Trainer
 # ===================================================================
 
 from transformers import (
@@ -943,8 +1055,344 @@ from transformers import (
     EarlyStoppingCallback,
 )
 
+
+class _HuttnerOneCycleTrainer(Seq2SeqTrainer):
+    """Seq2SeqTrainer with AdamW + OneCycleLR (paper-style scheduling)."""
+
+    def __init__(
+        self,
+        *args,
+        onecycle_max_lr: float,
+        onecycle_pct_start: float,
+        onecycle_base_momentum: float,
+        onecycle_max_momentum: float,
+        onecycle_initial_lr: float,
+        onecycle_final_div_factor: float,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self._onecycle_max_lr = float(onecycle_max_lr)
+        self._onecycle_pct_start = float(onecycle_pct_start)
+        self._onecycle_base_momentum = float(onecycle_base_momentum)
+        self._onecycle_max_momentum = float(onecycle_max_momentum)
+        self._onecycle_initial_lr = float(onecycle_initial_lr)
+        self._onecycle_final_div_factor = float(onecycle_final_div_factor)
+
+    def create_optimizer(self):
+        if self.optimizer is not None:
+            return self.optimizer
+
+        wd = 1e-4
+        params = [p for p in self.model.parameters() if p.requires_grad]
+
+        # Match the paper's optimizer choice (AdamW) and weight decay.
+        self.optimizer = torch.optim.AdamW(
+            params,
+            lr=self._onecycle_max_lr,
+            weight_decay=wd,
+        )
+        return self.optimizer
+
+    def create_scheduler(self, num_training_steps: int, optimizer=None):
+        if self.lr_scheduler is not None:
+            return self.lr_scheduler
+
+        optimizer = optimizer if optimizer is not None else self.optimizer
+        if optimizer is None:
+            raise RuntimeError("Optimizer must be created before scheduler")
+
+        # OneCycleLR expresses start/end LR via div_factor + final_div_factor.
+        # initial_lr = max_lr / div_factor
+        # end_lr     = max_lr / final_div_factor
+        if self._onecycle_initial_lr <= 0:
+            raise ValueError("onecycle_initial_lr must be > 0")
+        div_factor = self._onecycle_max_lr / self._onecycle_initial_lr
+
+        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=self._onecycle_max_lr,
+            total_steps=num_training_steps,
+            pct_start=self._onecycle_pct_start,
+            anneal_strategy="cos",
+            cycle_momentum=True,
+            base_momentum=self._onecycle_base_momentum,
+            max_momentum=self._onecycle_max_momentum,
+            div_factor=div_factor,
+            final_div_factor=self._onecycle_final_div_factor,
+        )
+        return self.lr_scheduler
+
+
+print("✅ Training components defined!")
+
+# ===================================================================
+# CELL 9b: Pretrain on CATMuS (Optional)
+# ===================================================================
+
+if ARGS.pretrain:
+    print("\n" + "#" * 70)
+    print("# PRETRAINING ON CATMuS/medieval DATASET")
+    print("#" * 70 + "\n")
+
+    # Import datasets library
+    try:
+        from datasets import load_dataset
+    except ImportError:
+        raise ImportError(
+            "❌ The 'datasets' library is required for CATMuS pretraining.\n"
+            "Install it with: pip install datasets"
+        )
+
+    # Load CATMuS dataset
+    print("📦 Loading CATMuS/medieval dataset...")
+    print("   (This may take a while on first load)")
+    try:
+        catmus_ds = load_dataset("CATMuS/medieval")
+        print(f"✅ CATMuS dataset loaded!")
+        print(f"   Available splits: {list(catmus_ds.keys())}")
+    except Exception as e:
+        print(f"❌ Failed to load CATMuS dataset: {e}")
+        print("   You may need to login: huggingface-cli login")
+        raise
+
+    # Use the predefined train/validation splits from the dataset
+    print("\n📊 Using predefined train/validation splits...")
+    catmus_train = catmus_ds["train"]
+    catmus_val = catmus_ds["validation"]
+
+    print(f"   Train: {len(catmus_train)} lines")
+    print(f"   Val:   {len(catmus_val)} lines")
+
+    # Show sample
+    print("\nSample text lines from CATMuS TRAIN:")
+    for i in range(min(3, len(catmus_train))):
+        sample_text = catmus_train[i]["text"]
+        print(f"  {i + 1}. {sample_text[:60]}...")
+
+    # Load model for pretraining
+    print("\n🔧 Loading model for pretraining...")
+    MODEL_NAME = "microsoft/trocr-base-handwritten"
+    processor = TrOCRProcessor.from_pretrained(MODEL_NAME)
+    model = VisionEncoderDecoderModel.from_pretrained(MODEL_NAME)
+
+    # Configure model
+    model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
+    model.config.eos_token_id = processor.tokenizer.eos_token_id
+    model.config.pad_token_id = processor.tokenizer.pad_token_id
+    model.config.vocab_size = len(processor.tokenizer)
+
+    # Configure generation
+    model.generation_config.max_length = 128
+    model.generation_config.early_stopping = True
+    model.generation_config.no_repeat_ngram_size = 3
+    model.generation_config.length_penalty = 2.0
+    model.generation_config.num_beams = 4
+
+    # Full fine-tuning
+    for param in model.parameters():
+        param.requires_grad = True
+
+    model.to(device)
+
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"Trainable parameters: {trainable:,} (100%)\n")
+
+    # Determine augmentation and CLAHE settings
+    if ARGS.huttner and ARGS.custom_aug:
+        aug = ManuscriptAugmentation()
+        USE_CLAHE = True
+        aug_name = "ManuscriptAugmentation"
+    elif ARGS.huttner:
+        aug = HuttnerSupplementAugmentation(p=0.2)
+        USE_CLAHE = False
+        aug_name = "HuttnerSupplementAugmentation"
+    elif ARGS.custom_aug:
+        aug = ManuscriptAugmentation()
+        USE_CLAHE = True
+        aug_name = "ManuscriptAugmentation"
+
+    MAX_TARGET_LENGTH = 128
+
+    print(f"Pretraining Configuration:")
+    print(f"  Augmentation: {aug_name}")
+    print(f"  CLAHE: {USE_CLAHE}")
+    print(
+        f"  Hyperparameters: {'Huttner (AdamW + OneCycle)' if ARGS.huttner else 'Standard (AdamW + warmup)'}"
+    )
+    print()
+
+    # Create CATMuS datasets
+    print("📚 Creating CATMuS datasets...")
+    catmus_train_dataset = CATMuSDataset(
+        catmus_train,
+        processor,
+        max_target_length=MAX_TARGET_LENGTH,
+        augment_transform=aug,
+        use_clahe=USE_CLAHE,
+    )
+
+    catmus_val_dataset = CATMuSDataset(
+        catmus_val,
+        processor,
+        max_target_length=MAX_TARGET_LENGTH,
+        augment_transform=None,
+        use_clahe=USE_CLAHE,
+    )
+
+    print(f"Train: {len(catmus_train_dataset)} | Val: {len(catmus_val_dataset)}\n")
+
+    # Setup pretraining output directory
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pretrain_dir = OUTPUT_BASE / f"catmus_pretrain_{timestamp}"
+    pretrain_dir.mkdir(parents=True, exist_ok=True)
+
+    # Pretraining args - use fewer epochs for pretraining
+    if ARGS.huttner:
+        pretrain_args = Seq2SeqTrainingArguments(
+            output_dir=str(pretrain_dir / "checkpoints"),
+            predict_with_generate=True,
+            generation_max_length=MAX_TARGET_LENGTH,
+            generation_num_beams=4,
+            eval_strategy="epoch",
+            save_strategy="epoch",
+            per_device_train_batch_size=8,
+            per_device_eval_batch_size=8,
+            gradient_accumulation_steps=1,
+            num_train_epochs=10,  # Fewer epochs for pretraining
+            learning_rate=ARGS.huttner_max_lr,
+            warmup_ratio=0.0,
+            weight_decay=0.0,
+            label_smoothing_factor=0.0,
+            fp16=False,
+            load_best_model_at_end=True,
+            metric_for_best_model="cer",
+            greater_is_better=False,
+            logging_strategy="steps",
+            logging_steps=100,
+            save_total_limit=2,
+            dataloader_num_workers=2,
+            report_to="none",
+        )
+    else:
+        pretrain_args = Seq2SeqTrainingArguments(
+            output_dir=str(pretrain_dir / "checkpoints"),
+            predict_with_generate=True,
+            generation_max_length=128,
+            generation_num_beams=4,
+            eval_strategy="epoch",
+            save_strategy="epoch",
+            per_device_train_batch_size=4,
+            per_device_eval_batch_size=4,
+            gradient_accumulation_steps=4,
+            num_train_epochs=10,  # Fewer epochs for pretraining
+            learning_rate=3e-5,
+            warmup_ratio=0.1,
+            weight_decay=0.01,
+            label_smoothing_factor=0.1,
+            fp16=True,
+            load_best_model_at_end=True,
+            metric_for_best_model="cer",
+            greater_is_better=False,
+            logging_strategy="steps",
+            logging_steps=100,
+            save_total_limit=2,
+            dataloader_num_workers=2,
+            report_to="none",
+        )
+
+    # Create trainer for pretraining
+    if ARGS.huttner:
+        # Conditionally add early stopping based on --early-stop flag
+        callbacks = []
+        if ARGS.early_stop:
+            callbacks.append(EarlyStoppingCallback(early_stopping_patience=5))
+            print("   Early stopping: ENABLED (patience=5)")
+        else:
+            print("   Early stopping: DISABLED")
+
+        pretrain_trainer = _HuttnerOneCycleTrainer(
+            model=model,
+            args=pretrain_args,
+            train_dataset=catmus_train_dataset,
+            eval_dataset=catmus_val_dataset,
+            data_collator=FixedDataCollator(processor),
+            compute_metrics=compute_metrics,
+            callbacks=callbacks,
+            onecycle_max_lr=ARGS.huttner_max_lr,
+            onecycle_pct_start=ARGS.huttner_pct_start,
+            onecycle_base_momentum=0.85,
+            onecycle_max_momentum=0.95,
+            onecycle_initial_lr=1e-9,
+            onecycle_final_div_factor=2.2e4,
+        )
+    else:
+        # Standard config always has early stopping
+        print("   Early stopping: ENABLED (patience=3)")
+        pretrain_trainer = Seq2SeqTrainer(
+            model=model,
+            args=pretrain_args,
+            train_dataset=catmus_train_dataset,
+            eval_dataset=catmus_val_dataset,
+            data_collator=FixedDataCollator(processor),
+            compute_metrics=compute_metrics,
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=3)],
+        )
+
+    # Pretrain
+    print("🚀 Starting pretraining on CATMuS...\n")
+    try:
+        pretrain_result = pretrain_trainer.train()
+
+        # Save pretrained model
+        pretrained_model_dir = pretrain_dir / "pretrained_model"
+        pretrain_trainer.save_model(pretrained_model_dir)
+        processor.save_pretrained(pretrained_model_dir)
+
+        print("\n" + "=" * 70)
+        print("PRETRAINING COMPLETED")
+        print("=" * 70)
+        print(f"Pretrained model saved to: {pretrained_model_dir}")
+        print("=" * 70 + "\n")
+
+        # Save results
+        pretrain_results = {
+            "dataset": "CATMuS/medieval",
+            "splits": {
+                "train": f"{len(catmus_train_dataset)} lines",
+                "val": f"{len(catmus_val_dataset)} lines",
+            },
+            "config": {
+                "use_clahe": USE_CLAHE,
+                "augmentation": aug_name,
+                "hyperparameters": "Huttner" if ARGS.huttner else "Standard",
+            },
+            "metrics": pretrain_result.metrics,
+        }
+
+        with open(pretrain_dir / "pretrain_results.json", "w") as f:
+            json.dump(pretrain_results, f, indent=2)
+
+        # Store the path for later use
+        PRETRAINED_MODEL_PATH = pretrained_model_dir
+
+    except Exception as e:
+        print(f"\n❌ PRETRAINING FAILED")
+        print(f"Error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        raise
+else:
+    PRETRAINED_MODEL_PATH = None
+
+# ===================================================================
+# CELL 10: Train TrOCR on READ Bozen
+# ===================================================================
+
 print("\n" + "#" * 70)
-print(f"# DATASET: {ARGS.dataset.upper()}")
+print(f"# FINE-TUNING ON DATASET: {ARGS.dataset.upper()}")
+if ARGS.pretrain:
+    print("# Using pretrained model from CATMuS")
 if ARGS.huttner and ARGS.custom_aug:
     print("# Configuration: Huttner hyperparams + ManuscriptAugmentation + CLAHE")
 elif ARGS.huttner:
@@ -955,10 +1403,18 @@ elif ARGS.custom_aug:
     print("# Configuration: Standard hyperparams + ManuscriptAugmentation + CLAHE")
 print("#" * 70 + "\n")
 
-# Load model
-MODEL_NAME = "microsoft/trocr-base-handwritten"
-processor = TrOCRProcessor.from_pretrained(MODEL_NAME)
-model = VisionEncoderDecoderModel.from_pretrained(MODEL_NAME)
+# Load model - use pretrained if available
+if ARGS.pretrain and PRETRAINED_MODEL_PATH is not None:
+    print(f"🔧 Loading pretrained model from {PRETRAINED_MODEL_PATH}...")
+    processor = TrOCRProcessor.from_pretrained(PRETRAINED_MODEL_PATH)
+    model = VisionEncoderDecoderModel.from_pretrained(PRETRAINED_MODEL_PATH)
+    print("✅ Pretrained model loaded!\n")
+else:
+    MODEL_NAME = "microsoft/trocr-base-handwritten"
+    print(f"🔧 Loading base model: {MODEL_NAME}...")
+    processor = TrOCRProcessor.from_pretrained(MODEL_NAME)
+    model = VisionEncoderDecoderModel.from_pretrained(MODEL_NAME)
+    print("✅ Base model loaded!\n")
 
 # Configure model
 model.config.decoder_start_token_id = processor.tokenizer.cls_token_id
@@ -1055,74 +1511,6 @@ dataset_prefix = "bozen" if ARGS.dataset == "read16" else "ict91"
 out_dir = OUTPUT_BASE / f"{dataset_prefix}_presplit_{timestamp}"
 out_dir.mkdir(parents=True, exist_ok=True)
 
-
-class _HuttnerOneCycleTrainer(Seq2SeqTrainer):
-    """Seq2SeqTrainer with AdamW + OneCycleLR (paper-style scheduling)."""
-
-    def __init__(
-        self,
-        *args,
-        onecycle_max_lr: float,
-        onecycle_pct_start: float,
-        onecycle_base_momentum: float,
-        onecycle_max_momentum: float,
-        onecycle_initial_lr: float,
-        onecycle_final_div_factor: float,
-        **kwargs,
-    ):
-        super().__init__(*args, **kwargs)
-        self._onecycle_max_lr = float(onecycle_max_lr)
-        self._onecycle_pct_start = float(onecycle_pct_start)
-        self._onecycle_base_momentum = float(onecycle_base_momentum)
-        self._onecycle_max_momentum = float(onecycle_max_momentum)
-        self._onecycle_initial_lr = float(onecycle_initial_lr)
-        self._onecycle_final_div_factor = float(onecycle_final_div_factor)
-
-    def create_optimizer(self):
-        if self.optimizer is not None:
-            return self.optimizer
-
-        wd = 1e-4
-        params = [p for p in self.model.parameters() if p.requires_grad]
-
-        # Match the paper's optimizer choice (AdamW) and weight decay.
-        self.optimizer = torch.optim.AdamW(
-            params,
-            lr=self._onecycle_max_lr,
-            weight_decay=wd,
-        )
-        return self.optimizer
-
-    def create_scheduler(self, num_training_steps: int, optimizer=None):
-        if self.lr_scheduler is not None:
-            return self.lr_scheduler
-
-        optimizer = optimizer if optimizer is not None else self.optimizer
-        if optimizer is None:
-            raise RuntimeError("Optimizer must be created before scheduler")
-
-        # OneCycleLR expresses start/end LR via div_factor + final_div_factor.
-        # initial_lr = max_lr / div_factor
-        # end_lr     = max_lr / final_div_factor
-        if self._onecycle_initial_lr <= 0:
-            raise ValueError("onecycle_initial_lr must be > 0")
-        div_factor = self._onecycle_max_lr / self._onecycle_initial_lr
-
-        self.lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer,
-            max_lr=self._onecycle_max_lr,
-            total_steps=num_training_steps,
-            pct_start=self._onecycle_pct_start,
-            anneal_strategy="cos",
-            cycle_momentum=True,
-            base_momentum=self._onecycle_base_momentum,
-            max_momentum=self._onecycle_max_momentum,
-            div_factor=div_factor,
-            final_div_factor=self._onecycle_final_div_factor,
-        )
-        return self.lr_scheduler
-
-
 if ARGS.huttner:
     # Paper-aligned knobs (as far as stated in the main PDF):
     # - AdamW, weight_decay=1e-4 (set in the custom trainer)
@@ -1191,6 +1579,14 @@ if ARGS.huttner:
     model.generation_config.no_repeat_ngram_size = 0
     model.generation_config.length_penalty = 1.0
 
+    # Conditionally add early stopping based on --early-stop flag
+    callbacks = []
+    if ARGS.early_stop:
+        callbacks.append(EarlyStoppingCallback(early_stopping_patience=5))
+        print("Early stopping: ENABLED (patience=5)")
+    else:
+        print("Early stopping: DISABLED (training for full 50 epochs)")
+
     trainer = _HuttnerOneCycleTrainer(
         model=model,
         args=training_args,
@@ -1198,7 +1594,7 @@ if ARGS.huttner:
         eval_dataset=val_dataset,
         data_collator=FixedDataCollator(processor),
         compute_metrics=compute_metrics,
-        callbacks=[],
+        callbacks=callbacks,
         onecycle_max_lr=ARGS.huttner_max_lr,
         onecycle_pct_start=ARGS.huttner_pct_start,
         onecycle_base_momentum=0.85,
@@ -1207,7 +1603,8 @@ if ARGS.huttner:
         onecycle_final_div_factor=2.2e4,
     )
 else:
-    # Trainer
+    # Standard config always has early stopping
+    print("Early stopping: ENABLED (patience=5)")
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,

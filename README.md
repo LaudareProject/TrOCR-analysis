@@ -75,6 +75,10 @@ the test results.
     - Test CER: 5.16%
     - Test WER: 21.18%
 
+- `--huttner --dataset I-Ct_91 --pretrain`:
+    - Test CER: 6.85%
+    - Test WER: 27.46%
+
 - `--huttner --custom-aug --dataset I-Ct_91`:
     - Test CER: 7.81%
     - Test WER: 30.40%

@@ -31,3 +31,4 @@ bozen_training_output/bozen_presplit_*
 bozen_training_output
 I-Ct_91
 ict91_training_output/ict91_presplit_*
+ict91_training_output/catmus_pretrain_*
