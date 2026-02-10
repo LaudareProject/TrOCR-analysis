@@ -71,13 +71,17 @@ the test results.
 
 #### Obtained results
 
+- `--huttner --dataset I-Ct_91 --pretrain`:
+    - Test CER: 6.85%
+    - Test WER: 27.46%
+
 - `--huttner --custom-aug --dataset read16`:
     - Test CER: 5.16%
     - Test WER: 21.18%
 
-- `--huttner --dataset I-Ct_91 --pretrain`:
-    - Test CER: 6.85%
-    - Test WER: 27.46%
+- `--huttner --custom-aug --dataset I-Ct_91` --pretrain:
+    - Test CER: 7.09%
+    - Test WER: 28.51%
 
 - `--huttner --custom-aug --dataset I-Ct_91`:
     - Test CER: 7.81%
@@ -90,6 +94,7 @@ the test results.
 - `--custom-aug --dataset I-Ct_91`:
     - Test CER: 9.55%
     - Test WER: 34.72%
+
 
 ### Token-Level GradCAM & Attention Analysis (Cortonese dataset)
 ```bash
