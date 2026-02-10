@@ -95,6 +95,7 @@ the test results.
     - Test CER: 9.55%
     - Test WER: 34.72%
 
+For comparison, kraken's CATMuS model got 7.89% CER and 31.17 WER.
 
 ### Token-Level GradCAM & Attention Analysis (Cortonese dataset)
 ```bash
