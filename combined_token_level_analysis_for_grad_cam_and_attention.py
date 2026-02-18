@@ -8,34 +8,8 @@ Original file is located at
 """
 
 # ===================================================================
-# Cell 1: Setup & Mount Drive
-# ===================================================================
-from google.colab import drive
-drive.mount('/content/drive')
-from google.colab import files
-import os
-
-print("📤 Upload the 3 pre-split JSON files from train_test_0 folder:")
-print("   - ocr_train.json")
-print("   - ocr_val.json")
-print("   - ocr_test.json")
-
-uploaded = files.upload()
-
-# Verify uploads
-print("\n✅ Upload verification:")
-for filename in ['ocr_train.json', 'ocr_val.json', 'ocr_test.json']:
-    if filename in uploaded:
-        print(f"   ✅ {filename} ({len(uploaded[filename])} bytes)")
-    else:
-        raise FileNotFoundError(f"   ❌ Missing: {filename} - Please upload it!")
-
-print("\n✅ All files uploaded successfully!")
-
-# ===================================================================
 # Cell 2: Install Dependencies & Main Imports
 # ===================================================================
-!pip install -q transformers datasets accelerate pillow editdistance jiwer opencv-python matplotlib seaborn scipy pandas
 
 import os
 import json
@@ -53,13 +27,12 @@ import time
 from scipy.stats import pearsonr, spearmanr, linregress
 
 # Configuration
-DRIVE_BASE = "/content/drive/MyDrive"
-IMG_DIR = Path(f"{DRIVE_BASE}/OMR/images/Dataset cortona")
-TRAIN_JSON = Path("/content/ocr_train.json")
-VAL_JSON = Path("/content/ocr_val.json")
-TEST_JSON = Path("/content/ocr_test.json")
-PROCESSED_DIR = Path("/content/processed_data")
-OUTPUT_BASE = Path("/content/trocr_ablation_results")
+IMG_DIR = "../LaudareBenchmarks/data/I-Ct_91"
+TRAIN_JSON = Path(f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_train.json")
+VAL_JSON = Path(f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_val.json")
+TEST_JSON = Path(f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_test.json")
+PROCESSED_DIR = Path("./processed_data/")
+OUTPUT_BASE = Path("./results")
 
 PROCESSED_DIR.mkdir(exist_ok=True)
 OUTPUT_BASE.mkdir(exist_ok=True)
@@ -880,7 +853,7 @@ def create_comparison_plots(token_df, image_df, output_dir):
 # Load model and processor
 from transformers import VisionEncoderDecoderModel, TrOCRProcessor
 
-model_path = "/content/drive/MyDrive/freezenoneupdatedepochpatience_results" #Path of your trained model
+model_path = "./trocr_enc0_dec0_finetuned" #Path of your trained model
 model = VisionEncoderDecoderModel.from_pretrained(model_path)
 processor = TrOCRProcessor.from_pretrained(model_path)
 model.to(device)
@@ -893,7 +866,7 @@ test_dataset = TrOCRDataset(
     use_clahe=True
 )
 # Run combined analysis
-output_dir = Path("/content/combined_gradcam_attention_analysis")
+output_dir = Path("./results")
 
 token_df, image_df = run_combined_analysis(
     model=model,
