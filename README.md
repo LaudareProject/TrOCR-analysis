@@ -12,7 +12,7 @@ Reusable scripts analyze Microsoft TrOCR fine-tuning, GradCAM/attention attribut
 
 `ablation_study_experiments.py` replays the TrOCR ablations described in the project: full fine-tuning, freezing variants, CLAHE removal, and augmentation removal. It is designed to run inside Colab with `/content/drive/MyDrive/OMR/images/Dataset cortona` and the JSON splits, but you can rerun it locally by updating the path constants near the top of the file.
 
-1. Place `ocr_train.json`, `ocr_val.json`, `ocr_test.json`, and the Cortona images in a drive-like directory and set the `IMAGES_ROOT` constant accordingly.
+1. Place `ocr_train.json`, `ocr_val.json`, `ocr_test.json`, and the Cortona images in a drive-like directory and update `IMG_DIR`, `TRAIN_JSON`, `VAL_JSON`, and `TEST_JSON` accordingly.
 2. Set the `EXPERIMENT` variable to one of `baseline`, `no_clahe`, `no_aug`, `freeze_none`, `freeze_all`. Each option sets a tailored learning rate, batch size, gradient accumulation, and whether CLAHE/augmentation is enabled.
 3. Run the script: `uv run python ablation_study_experiments.py`. It fine-tunes `microsoft/trocr-base-handwritten`, evaluates CER/WER on `ocr_test.json`, and emits:
    - `trocr_ablation_results/{experiment}_{timestamp}/results.json` (experiment metrics and config)
@@ -24,13 +24,13 @@ Reusable scripts analyze Microsoft TrOCR fine-tuning, GradCAM/attention attribut
 
 `combined_token_level_analysis_for_grad_cam_and_attention.py` loads a fine-tuned TrOCR checkpoint, rebuilds the Cortona test split, and generates token-wise GradCAM vs. encoder-decoder attention metrics.
 
-1. Update the hard-coded constants: point `MODEL_DIR`/`CHECKPOINT_PATH` to your fine-tuned checkpoint (default `/content/drive/MyDrive/freezenoneupdatedepochpatience_results`) and set `RESULTS_DIR` to the desired export folder (default `/content/combined_gradcam_attention_analysis`).
-2. Keep the Cortona JSON annotations and images aligned with the paths used in the ablation study; modify `DATA_ROOT` if necessary.
+1. Update the hard-coded paths used by the script: set `IMG_DIR`, `TRAIN_JSON`, `VAL_JSON`, and `TEST_JSON` to your dataset location; set `model_path` to your fine-tuned checkpoint (default `/content/drive/MyDrive/freezenoneupdatedepochpatience_results`); and set `output_dir` to your export folder (default `/content/combined_gradcam_attention_analysis`).
+2. Keep the JSON annotations and image root aligned so the `TrOCRDataset` constructor can resolve each image file.
 3. Adjust `num_samples` within the script to limit how many examples produce paired visualizations.
 4. Run `uv run python combined_token_level_analysis_for_grad_cam_and_attention.py`. Outputs:
    - `combined_token_results.csv` — token-level GradCAM mass, attention mass, Gini, entropy, and loss per token
    - `combined_image_results.csv` — per-sample summaries of attribution strength and CER/WER
-   - Visual overlays (GradCAM vs attention) under the configured `RESULTS_DIR`
+   - Visual overlays (GradCAM vs attention) under the configured `output_dir`
 5. Use the CSVs and overlays to reproduce plots that compare GradCAM importance with attention distribution and token-level errors.
 
 ## 3. READ16 / Hüttner Experiments
