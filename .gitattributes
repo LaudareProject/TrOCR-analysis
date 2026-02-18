@@ -1,0 +1,1 @@
+trocr_enc0_dec0_finetuned/model.safetensors filter=lfs diff=lfs merge=lfs -text
