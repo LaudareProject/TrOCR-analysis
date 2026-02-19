@@ -7,6 +7,7 @@ Compares ML Experiment and GradCAM Ablation performance at one data-driven thres
 import pandas as pd
 import numpy as np
 import itertools
+import argparse
 from sklearn.model_selection import LeaveOneOut
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
@@ -508,6 +509,16 @@ def run_model_comparison_tests(selected_models, modality_data, threshold):
     }
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Run threshold analysis with median or KMeans threshold."
+    )
+    parser.add_argument(
+        "--use-kmeans",
+        action="store_true",
+        help="Use KMeans-based global threshold (default uses median CER).",
+    )
+    args = parser.parse_args()
+
     csv_path = 'results/combined_token_results.csv'
 
     modalities = {
@@ -540,30 +551,51 @@ def main():
             'loss_features_gradcam': loss_features_gradcam,
         }
 
-    (
-        threshold,
-        centers,
-        low_cluster_max,
-        high_cluster_min,
-        low_cluster_count,
-        high_cluster_count,
-        low_cluster_ratio,
-        high_cluster_ratio,
-    ) = compute_kmeans_global_threshold(modality_data['unfiltered']['df_ml']['image_cer'].values)
+    cer_values_unfiltered = modality_data['unfiltered']['df_ml']['image_cer'].values
 
-    print("Using global threshold from KMeans clustering")
-    print(f"  Cluster centers: {np.sort(centers)}")
-    print(f"  Max CER in low cluster: {low_cluster_max:.6f}")
-    print(f"  Min CER in high cluster: {high_cluster_min:.6f}")
-    print(f"  Global threshold: {threshold:.6f}")
-    print(
-        "  Ratio below threshold cluster: "
-        f"{low_cluster_ratio:.4f} ({low_cluster_count} samples)"
-    )
-    print(
-        "  Ratio above threshold cluster: "
-        f"{high_cluster_ratio:.4f} ({high_cluster_count} samples)"
-    )
+    if args.use_kmeans:
+        (
+            threshold,
+            centers,
+            low_cluster_max,
+            high_cluster_min,
+            low_cluster_count,
+            high_cluster_count,
+            low_cluster_ratio,
+            high_cluster_ratio,
+        ) = compute_kmeans_global_threshold(cer_values_unfiltered)
+
+        print("Using global threshold from KMeans clustering")
+        print(f"  Cluster centers: {np.sort(centers)}")
+        print(f"  Max CER in low cluster: {low_cluster_max:.6f}")
+        print(f"  Min CER in high cluster: {high_cluster_min:.6f}")
+        print(f"  Global threshold: {threshold:.6f}")
+        print(
+            "  Ratio below threshold cluster: "
+            f"{low_cluster_ratio:.4f} ({low_cluster_count} samples)"
+        )
+        print(
+            "  Ratio above threshold cluster: "
+            f"{high_cluster_ratio:.4f} ({high_cluster_count} samples)"
+        )
+    else:
+        threshold = float(np.median(cer_values_unfiltered))
+        below_count = int(np.sum(cer_values_unfiltered <= threshold))
+        above_count = int(np.sum(cer_values_unfiltered > threshold))
+        total_count = below_count + above_count
+        below_ratio = below_count / total_count if total_count else 0.0
+        above_ratio = above_count / total_count if total_count else 0.0
+
+        print("Using global threshold from median CER (default)")
+        print(f"  Global threshold: {threshold:.6f}")
+        print(
+            "  Ratio at/below threshold: "
+            f"{below_ratio:.4f} ({below_count} samples)"
+        )
+        print(
+            "  Ratio above threshold: "
+            f"{above_ratio:.4f} ({above_count} samples)"
+        )
 
     results_by_modality = {
         modality_name: {
