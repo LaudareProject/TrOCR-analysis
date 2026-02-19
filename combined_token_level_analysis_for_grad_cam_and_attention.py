@@ -37,16 +37,6 @@ OUTPUT_BASE = Path("./results")
 PROCESSED_DIR.mkdir(exist_ok=True)
 OUTPUT_BASE.mkdir(exist_ok=True)
 
-# Experiment selection
-EXPERIMENT = "freeze_none"  # Options: baseline, no_clahe, no_aug, freeze_none
-
-# Training hyperparameters
-NUM_EPOCHS = 50
-TRAIN_BATCH = 4
-EVAL_BATCH = 8
-GRAD_ACCUM = 4
-LR = 3e-5
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
@@ -140,75 +130,6 @@ filtered = {
     "images": list(image_map.values()),
     "annotations": train_anns + val_anns + test_anns
 }
-
-# ===================================================================
-# Cell 4: Data Augmentation Class
-# ===================================================================
-class ManuscriptAugmentation:
-    def __call__(self, image: Image.Image) -> Image.Image:
-        img_np = np.array(image)
-
-        # Rotation
-        if random.random() < 0.4:
-            angle = random.uniform(-5, 5)
-            h, w = img_np.shape[:2]
-            M = cv2.getRotationMatrix2D((w/2, h/2), angle, 1.0)
-            img_np = cv2.warpAffine(img_np, M, (w, h), borderMode=cv2.BORDER_REPLICATE)
-
-        # Elastic deformation
-        if random.random() < 0.25:
-            h, w = img_np.shape[:2]
-            if h > 20 and w > 20:
-                dx = cv2.resize(np.random.randn(max(h//10, 3), max(w//10, 3)), (w, h)) * 3
-                dy = cv2.resize(np.random.randn(max(h//10, 3), max(w//10, 3)), (w, h)) * 3
-                x, y = np.meshgrid(np.arange(w), np.arange(h))
-                map_x = np.clip(x + dx, 0, w-1).astype(np.float32)
-                map_y = np.clip(y + dy, 0, h-1).astype(np.float32)
-                img_np = cv2.remap(img_np, map_x, map_y, cv2.INTER_LINEAR)
-
-        # Gaussian blur
-        if random.random() < 0.35:
-            kernel_size = random.choice([3,5,7])
-            sigma = random.uniform(0.5,1.2)
-            img_np = cv2.GaussianBlur(img_np, (kernel_size,kernel_size), sigma)
-
-        # Brightness
-        if random.random() < 0.4:
-            factor = random.uniform(0.7,1.3)
-            img_np = np.clip(img_np * factor, 0, 255).astype(np.uint8)
-
-        # Contrast
-        if random.random() < 0.3:
-            factor = random.uniform(0.8,1.2)
-            mean = img_np.mean()
-            img_np = np.clip((img_np-mean)*factor + mean, 0, 255).astype(np.uint8)
-
-        # Speckle noise
-        if random.random() < 0.25:
-            noise = np.random.randn(*img_np.shape) * 6
-            img_np = np.clip(img_np + noise, 0, 255).astype(np.uint8)
-
-        # Morphological operations
-        if random.random() < 0.15:
-            kernel = np.ones((2,2), np.uint8)
-            if random.random() < 0.5:
-                img_np = cv2.erode(img_np, kernel, iterations=1)
-            else:
-                img_np = cv2.dilate(img_np, kernel, iterations=1)
-
-        # Shadow/staining
-        if random.random() < 0.15:
-            h, w = img_np.shape[:2]
-            if h > 10 and w > 10:
-                shadow = np.random.randn(max(h//5,2), max(w//5,2))
-                shadow = cv2.resize(shadow, (w,h))
-                shadow = (shadow - shadow.min()) / (shadow.max()-shadow.min()+1e-8)
-                shadow = 1 - shadow * 0.25
-                if len(img_np.shape) == 3:
-                    shadow = np.expand_dims(shadow, axis=-1)
-                img_np = np.clip(img_np * shadow, 0, 255).astype(np.uint8)
-
-        return Image.fromarray(img_np)
 
 # ===================================================================
 # Cell 5: Dataset Class
@@ -874,7 +795,7 @@ token_df, image_df = run_combined_analysis(
     processor=processor,
     device=device,
     output_dir=output_dir,
-    num_samples=120 # Adjust as needed
+    num_samples=None # Adjust as needed
 )
 
 print("\n" + "="*70)
