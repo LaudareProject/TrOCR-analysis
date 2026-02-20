@@ -28,9 +28,15 @@ from scipy.stats import pearsonr, spearmanr, linregress
 
 # Configuration
 IMG_DIR = "../LaudareBenchmarks/data/I-Ct_91"
-TRAIN_JSON = Path(f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_train.json")
-VAL_JSON = Path(f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_val.json")
-TEST_JSON = Path(f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_test.json")
+TRAIN_JSON = Path(
+    f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_train.json"
+)
+VAL_JSON = Path(
+    f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_val.json"
+)
+TEST_JSON = Path(
+    f"{IMG_DIR}/annotations-diplomatic/processed_splits/train_test_0/ocr_test.json"
+)
 PROCESSED_DIR = Path("./processed_data/")
 OUTPUT_BASE = Path("./results")
 
@@ -67,7 +73,11 @@ val_anns = val_data["annotations"]
 test_anns = test_data["annotations"]
 
 # Create unified image map
-all_images = train_data.get("images", []) + val_data.get("images", []) + test_data.get("images", [])
+all_images = (
+    train_data.get("images", [])
+    + val_data.get("images", [])
+    + test_data.get("images", [])
+)
 image_map = {img["id"]: img for img in all_images}
 
 # Remove duplicates in image_map (in case images appear in multiple files)
@@ -86,15 +96,24 @@ print(f"   Total unique images: {len(image_map)}")
 # Filter for text-line category (category_id = 6)
 TEXT_LINE_CATEGORY = 6
 
-train_anns = [ann for ann in train_anns
-              if ann.get("category_id") == TEXT_LINE_CATEGORY and
-              ann.get("description", "").strip()]
-val_anns = [ann for ann in val_anns
-            if ann.get("category_id") == TEXT_LINE_CATEGORY and
-            ann.get("description", "").strip()]
-test_anns = [ann for ann in test_anns
-             if ann.get("category_id") == TEXT_LINE_CATEGORY and
-             ann.get("description", "").strip()]
+train_anns = [
+    ann
+    for ann in train_anns
+    if ann.get("category_id") == TEXT_LINE_CATEGORY
+    and ann.get("description", "").strip()
+]
+val_anns = [
+    ann
+    for ann in val_anns
+    if ann.get("category_id") == TEXT_LINE_CATEGORY
+    and ann.get("description", "").strip()
+]
+test_anns = [
+    ann
+    for ann in test_anns
+    if ann.get("category_id") == TEXT_LINE_CATEGORY
+    and ann.get("description", "").strip()
+]
 
 print(f"\n✅ After filtering for text-line category:")
 print(f"   Train: {len(train_anns)} text lines")
@@ -109,7 +128,7 @@ test_ids = set([ann["id"] for ann in test_anns])
 overlaps = {
     "train-val": len(train_ids & val_ids),
     "train-test": len(train_ids & test_ids),
-    "val-test": len(val_ids & test_ids)
+    "val-test": len(val_ids & test_ids),
 }
 
 print(f"\n✅ Data leakage check:")
@@ -128,8 +147,9 @@ filtered = {
     "licenses": train_data.get("licenses", []),
     "categories": train_data.get("categories", []),
     "images": list(image_map.values()),
-    "annotations": train_anns + val_anns + test_anns
+    "annotations": train_anns + val_anns + test_anns,
 }
+
 
 # ===================================================================
 # Cell 5: Dataset Class
@@ -137,9 +157,18 @@ filtered = {
 from torch.utils.data import Dataset
 from transformers import TrOCRProcessor
 
+
 class TrOCRDataset(Dataset):
-    def __init__(self, annotations, images_info, image_root, processor: TrOCRProcessor,
-                 max_target_length=128, augment_transform=None, use_clahe=True):
+    def __init__(
+        self,
+        annotations,
+        images_info,
+        image_root,
+        processor: TrOCRProcessor,
+        max_target_length=128,
+        augment_transform=None,
+        use_clahe=True,
+    ):
         self.annotations = annotations
         self.image_root = Path(image_root)
         self.processor = processor
@@ -147,7 +176,9 @@ class TrOCRDataset(Dataset):
         self.augment_transform = augment_transform
         self.use_clahe = use_clahe
         self.image_id_to_info = images_info
-        print(f"Dataset: {len(self.annotations)} samples, CLAHE={self.use_clahe}, AUG={augment_transform is not None}")
+        print(
+            f"Dataset: {len(self.annotations)} samples, CLAHE={self.use_clahe}, AUG={augment_transform is not None}"
+        )
 
     def preprocess_image(self, img_np):
         if len(img_np.shape) == 3:
@@ -156,7 +187,7 @@ class TrOCRDataset(Dataset):
             gray = img_np
 
         if self.use_clahe:
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             enhanced = clahe.apply(gray)
         else:
             enhanced = cv2.equalizeHist(gray)
@@ -177,14 +208,14 @@ class TrOCRDataset(Dataset):
         if img is None:
             raise FileNotFoundError(f"Image not found: {image_path}")
 
-        x,y,w,h = [int(v) for v in ann["bbox"]]
+        x, y, w, h = [int(v) for v in ann["bbox"]]
         margin = 8
-        x = max(0, x-margin)
-        y = max(0, y-margin)
-        w = min(img.shape[1] - x, w + 2*margin)
-        h = min(img.shape[0] - y, h + 2*margin)
+        x = max(0, x - margin)
+        y = max(0, y - margin)
+        w = min(img.shape[1] - x, w + 2 * margin)
+        h = min(img.shape[0] - y, h + 2 * margin)
 
-        crop = img[y:y+h, x:x+w]
+        crop = img[y : y + h, x : x + w]
         crop = self.preprocess_image(crop)
         pil = Image.fromarray(crop)
 
@@ -197,11 +228,12 @@ class TrOCRDataset(Dataset):
             padding="max_length",
             max_length=self.max_target_length,
             truncation=True,
-            return_tensors="pt"
+            return_tensors="pt",
         )
 
         encoding = {k: v.squeeze(0) for k, v in encoding.items()}
         return encoding
+
 
 # ===================================================================
 # Cell 6: Combined Token level analysis for Grad-CAM and Attention
@@ -224,23 +256,13 @@ import editdistance
 # GRAD-CAM: Token-Level Analysis
 # ============================================================================
 
+
 class TokenLevelTrOCRGradCAM:
-    """Token-by-token Grad-CAM for TrOCR"""
+    """Token-by-token Grad-CAM on last decoder cross-attention."""
+
     def __init__(self, model, device):
         self.model = model
         self.device = device
-        self.gradients = None
-        self.activations = None
-
-        target_layer = self.model.encoder.encoder.layer[-1]
-        target_layer.register_forward_hook(self._save_activation)
-        target_layer.register_full_backward_hook(self._save_gradient)
-
-    def _save_activation(self, module, input, output):
-        self.activations = output.detach()
-
-    def _save_gradient(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0].detach()
 
     def generate_token_level_cams(self, pixel_values, target_ids):
         """Generate separate Grad-CAM for EACH token"""
@@ -252,11 +274,22 @@ class TokenLevelTrOCRGradCAM:
         outputs = self.model(
             pixel_values=pixel_values,
             decoder_input_ids=target_ids,
-            return_dict=True
+            output_attentions=True,
+            return_dict=True,
         )
 
         logits = outputs.logits
-        valid_mask = (target_ids[0] != -100) & (target_ids[0] != self.model.config.pad_token_id)
+        cross_attentions = outputs.cross_attentions
+        if cross_attentions is None or len(cross_attentions) == 0:
+            return []
+
+        # Last decoder layer cross-attention: (batch, heads, tgt_len, src_len)
+        last_cross_attn = cross_attentions[-1]
+        last_cross_attn.retain_grad()
+
+        valid_mask = (target_ids[0] != -100) & (
+            target_ids[0] != self.model.config.pad_token_id
+        )
         valid_positions = torch.where(valid_mask)[0]
 
         token_cams = []
@@ -266,16 +299,18 @@ class TokenLevelTrOCRGradCAM:
             token_logit = logits[0, pos, token_id]
 
             self.model.zero_grad()
+            if last_cross_attn.grad is not None:
+                last_cross_attn.grad.zero_()
             token_logit.backward(retain_graph=True)
 
-            if self.gradients is not None and self.activations is not None:
-                gradients = self.gradients[0]
-                activations = self.activations[0]
-                weights = gradients.mean(dim=0)
+            if last_cross_attn.grad is not None:
+                # Per-token slice over attention heads: (heads, src_len)
+                gradients = last_cross_attn.grad[0, :, pos, :]
+                activations = last_cross_attn[0, :, pos, :]
 
-                cam = torch.zeros(activations.size(0), device=self.device)
-                for i in range(activations.size(1)):
-                    cam += weights[i] * activations[:, i]
+                # Grad-CAM weighting across heads
+                weights = gradients.mean(dim=1, keepdim=True)  # (heads, 1)
+                cam = (weights * activations).sum(dim=0)  # (src_len,)
 
                 cam = F.relu(cam)
                 if cam.max() > 0:
@@ -283,20 +318,22 @@ class TokenLevelTrOCRGradCAM:
 
                 cam = cam[1:]
                 grid_size = int(np.sqrt(len(cam)))
-                cam_2d = cam[:grid_size*grid_size].reshape(grid_size, grid_size)
+                cam_2d = cam[: grid_size * grid_size].reshape(grid_size, grid_size)
 
                 loss = F.cross_entropy(
-                    logits[0, pos:pos+1],
-                    target_ids[0, pos:pos+1],
-                    reduction='none'
+                    logits[0, pos : pos + 1],
+                    target_ids[0, pos : pos + 1],
+                    reduction="none",
                 ).item()
 
-                token_cams.append({
-                    'position': pos.item(),
-                    'token_id': token_id,
-                    'cam': cam_2d.cpu().numpy(),
-                    'loss': loss
-                })
+                token_cams.append(
+                    {
+                        "position": pos.item(),
+                        "token_id": token_id,
+                        "cam": cam_2d.cpu().numpy(),
+                        "loss": loss,
+                    }
+                )
 
         return token_cams
 
@@ -305,11 +342,13 @@ class TokenLevelTrOCRGradCAM:
 # ATTENTION: Token-Level Analysis
 # ============================================================================
 
+
 class TokenLevelAttentionExtractor:
     """
     Extract cross-attention maps for each token
     Shows which image patches the decoder attended to to for each prediction
     """
+
     def __init__(self, model, device):
         # Simplified init: no need to register hooks manually, outputs.cross_attentions provides them.
         self.model = model
@@ -331,12 +370,14 @@ class TokenLevelAttentionExtractor:
             outputs = self.model(
                 pixel_values=pixel_values,
                 decoder_input_ids=target_ids,
-                output_attentions=True, # Ensure attention outputs are generated
-                return_dict=True
+                output_attentions=True,  # Ensure attention outputs are generated
+                return_dict=True,
             )
 
         # Get valid token positions
-        valid_mask = (target_ids[0] != -100) & (target_ids[0] != self.model.config.pad_token_id)
+        valid_mask = (target_ids[0] != -100) & (
+            target_ids[0] != self.model.config.pad_token_id
+        )
         valid_positions = torch.where(valid_mask)[0]
 
         # Extract cross-attention from the LAST decoder layer
@@ -353,30 +394,38 @@ class TokenLevelAttentionExtractor:
 
                 # Get attention for this specific token position
                 # Average across attention heads
-                token_attn = last_layer_attention[0, :, pos, :].mean(dim=0)  # (src_len,)
+                token_attn = last_layer_attention[0, :, pos, :].mean(
+                    dim=0
+                )  # (src_len,)
 
                 # Remove CLS token and reshape to 2D
                 # The vision encoder output includes a CLS token at the beginning
                 token_attn = token_attn[1:]  # Remove CLS token
-                grid_size = int(np.sqrt(len(token_attn))) # Assuming square patches for simplicity
-                attn_2d = token_attn[:grid_size*grid_size].reshape(grid_size, grid_size)
+                grid_size = int(
+                    np.sqrt(len(token_attn))
+                )  # Assuming square patches for simplicity
+                attn_2d = token_attn[: grid_size * grid_size].reshape(
+                    grid_size, grid_size
+                )
 
                 # Normalize to [0, 1]
                 attn_2d = attn_2d / (attn_2d.max() + 1e-10)
 
                 # Get logits for loss calculation
                 loss = F.cross_entropy(
-                    outputs.logits[0, pos:pos+1], # logits for this token
-                    target_ids[0, pos:pos+1],    # actual target token
-                    reduction='none'
+                    outputs.logits[0, pos : pos + 1],  # logits for this token
+                    target_ids[0, pos : pos + 1],  # actual target token
+                    reduction="none",
                 ).item()
 
-                token_attentions.append({
-                    'position': pos.item(),
-                    'token_id': token_id,
-                    'attention': attn_2d.cpu().numpy(),
-                    'loss': loss
-                })
+                token_attentions.append(
+                    {
+                        "position": pos.item(),
+                        "token_id": token_id,
+                        "attention": attn_2d.cpu().numpy(),
+                        "loss": loss,
+                    }
+                )
 
             return token_attentions
 
@@ -387,6 +436,7 @@ class TokenLevelAttentionExtractor:
 # METRICS & ANALYSIS
 # ============================================================================
 
+
 def compute_map_metrics(map_2d):
     """Compute metrics for attention/CAM map"""
     map_flat = map_2d.flatten()
@@ -396,7 +446,9 @@ def compute_map_metrics(map_2d):
     n = len(sorted_map)
     cumsum = np.cumsum(sorted_map)
     if cumsum[-1] > 0:
-        gini = (2 * np.sum((np.arange(1, n+1)) * sorted_map)) / (n * cumsum[-1]) - (n+1)/n
+        gini = (2 * np.sum((np.arange(1, n + 1)) * sorted_map)) / (n * cumsum[-1]) - (
+            n + 1
+        ) / n
     else:
         gini = 0.0
 
@@ -410,16 +462,16 @@ def compute_map_metrics(map_2d):
 
     h, w = map_2d.shape
     center_mask = np.zeros_like(map_2d)
-    center_h, center_w = h//4, w//4
-    center_mask[center_h:3*center_h, center_w:3*center_w] = 1
+    center_h, center_w = h // 4, w // 4
+    center_mask[center_h : 3 * center_h, center_w : 3 * center_w] = 1
     center_bias = (map_2d * center_mask).sum() / (map_2d.sum() + 1e-10)
 
     return {
-        'gini_coefficient': gini,
-        'peak_activation': peak,
-        'coverage': coverage,
-        'entropy': normalized_entropy,
-        'center_bias': center_bias
+        "gini_coefficient": gini,
+        "peak_activation": peak,
+        "coverage": coverage,
+        "entropy": normalized_entropy,
+        "center_bias": center_bias,
     }
 
 
@@ -440,7 +492,9 @@ def analyze_sample_combined(model, dataset_item, processor, device, save_dir=Non
 
     # Get both Grad-CAM and Attention
     token_cams = gradcam.generate_token_level_cams(pixel, decoder_input)
-    token_attentions = attention_extractor.extract_token_level_attention(pixel, decoder_input)
+    token_attentions = attention_extractor.extract_token_level_attention(
+        pixel, decoder_input
+    )
 
     # Get ground truth and prediction
     label_str = processor.batch_decode(labels, skip_special_tokens=True)[0]
@@ -455,50 +509,63 @@ def analyze_sample_combined(model, dataset_item, processor, device, save_dir=Non
     # Analyze each token for BOTH methods
     combined_results = []
     for cam_data, attn_data in zip(token_cams, token_attentions):
-        cam_metrics = compute_map_metrics(cam_data['cam'])
-        attn_metrics = compute_map_metrics(attn_data['attention'])
+        cam_metrics = compute_map_metrics(cam_data["cam"])
+        attn_metrics = compute_map_metrics(attn_data["attention"])
 
         combined = {
-            'position': cam_data['position'],
-            'token_id': cam_data['token_id'],
-            'token_char': processor.tokenizer.decode([cam_data['token_id']]),
-            'token_loss': cam_data['loss'],
-
+            "position": cam_data["position"],
+            "token_id": cam_data["token_id"],
+            "token_char": processor.tokenizer.decode([cam_data["token_id"]]),
+            "token_loss": cam_data["loss"],
             # Grad-CAM metrics
-            'gradcam_gini': cam_metrics['gini_coefficient'],
-            'gradcam_peak': cam_metrics['peak_activation'],
-            'gradcam_coverage': cam_metrics['coverage'],
-            'gradcam_entropy': cam_metrics['entropy'],
-
+            "gradcam_gini": cam_metrics["gini_coefficient"],
+            "gradcam_peak": cam_metrics["peak_activation"],
+            "gradcam_coverage": cam_metrics["coverage"],
+            "gradcam_entropy": cam_metrics["entropy"],
             # Attention metrics
-            'attention_gini': attn_metrics['gini_coefficient'],
-            'attention_peak': attn_metrics['peak_activation'],
-            'attention_coverage': attn_metrics['coverage'],
-            'attention_entropy': attn_metrics['entropy'],
+            "attention_gini": attn_metrics["gini_coefficient"],
+            "attention_peak": attn_metrics["peak_activation"],
+            "attention_coverage": attn_metrics["coverage"],
+            "attention_entropy": attn_metrics["entropy"],
         }
         combined_results.append(combined)
 
     # Visualize if requested
     if save_dir:
         visualize_combined_analysis(
-            pixel[0], token_cams, token_attentions, combined_results,
-            pred_str, label_str, cer, processor, save_dir
+            pixel[0],
+            token_cams,
+            token_attentions,
+            combined_results,
+            pred_str,
+            label_str,
+            cer,
+            processor,
+            save_dir,
         )
 
     return {
-        'image_cer': cer,
-        'prediction': pred_str,
-        'ground_truth': label_str,
-        'token_results': combined_results,
-        'mean_gradcam_gini': np.mean([t['gradcam_gini'] for t in combined_results]),
-        'mean_attention_gini': np.mean([t['attention_gini'] for t in combined_results]),
-        'mean_loss': np.mean([t['token_loss'] for t in combined_results])
+        "image_cer": cer,
+        "prediction": pred_str,
+        "ground_truth": label_str,
+        "token_results": combined_results,
+        "mean_gradcam_gini": np.mean([t["gradcam_gini"] for t in combined_results]),
+        "mean_attention_gini": np.mean([t["attention_gini"] for t in combined_results]),
+        "mean_loss": np.mean([t["token_loss"] for t in combined_results]),
     }
 
 
-def visualize_combined_analysis(image_tensor, token_cams, token_attentions,
-                                 token_results, prediction, ground_truth,
-                                 cer, processor, save_dir):
+def visualize_combined_analysis(
+    image_tensor,
+    token_cams,
+    token_attentions,
+    token_results,
+    prediction,
+    ground_truth,
+    cer,
+    processor,
+    save_dir,
+):
     """
     Visualize BOTH Grad-CAM and Attention side-by-side for each token
     """
@@ -517,9 +584,9 @@ def visualize_combined_analysis(image_tensor, token_cams, token_attentions,
 
     # Header
     ax_img = fig.add_subplot(gs[0, :2])
-    ax_img.imshow(img, cmap='gray')
-    ax_img.set_title('Original Image', fontsize=14, fontweight='bold')
-    ax_img.axis('off')
+    ax_img.imshow(img, cmap="gray")
+    ax_img.set_title("Original Image", fontsize=14, fontweight="bold")
+    ax_img.axis("off")
 
     ax_summary = fig.add_subplot(gs[0, 2:])
     summary_text = f"""
@@ -529,93 +596,127 @@ Prediction:   "{prediction}"
 Overall CER: {cer:.4f}
 Tokens: {num_tokens}
 
-Mean Grad-CAM Gini: {np.mean([t['gradcam_gini'] for t in token_results]):.3f}
-Mean Attention Gini: {np.mean([t['attention_gini'] for t in token_results]):.3f}
-Mean Loss: {np.mean([t['token_loss'] for t in token_results]):.4f}
+Mean Grad-CAM Gini: {np.mean([t["gradcam_gini"] for t in token_results]):.3f}
+Mean Attention Gini: {np.mean([t["attention_gini"] for t in token_results]):.3f}
+Mean Loss: {np.mean([t["token_loss"] for t in token_results]):.4f}
 """
-    ax_summary.text(0.05, 0.95, summary_text, transform=ax_summary.transAxes,
-                    fontsize=11, verticalalignment='top', fontfamily='monospace',
-                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.3))
-    ax_summary.axis('off')
+    ax_summary.text(
+        0.05,
+        0.95,
+        summary_text,
+        transform=ax_summary.transAxes,
+        fontsize=11,
+        verticalalignment="top",
+        fontfamily="monospace",
+        bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.3),
+    )
+    ax_summary.axis("off")
 
     # Token-by-token: Grad-CAM vs Attention
-    for idx, (cam_data, attn_data, metrics) in enumerate(zip(token_cams, token_attentions, token_results)):
+    for idx, (cam_data, attn_data, metrics) in enumerate(
+        zip(token_cams, token_attentions, token_results)
+    ):
         row = 1 + idx
 
         # Original crop
         ax_orig = fig.add_subplot(gs[row, 0])
-        ax_orig.imshow(img, cmap='gray')
-        ax_orig.axis('off')
+        ax_orig.imshow(img, cmap="gray")
+        ax_orig.axis("off")
 
         # Grad-CAM
         ax_cam = fig.add_subplot(gs[row, 1])
-        cam_resized = cv2.resize(cam_data['cam'].astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
-        heatmap_cam = cv2.applyColorMap((cam_resized * 255).astype(np.uint8), cv2.COLORMAP_JET)
+        cam_resized = cv2.resize(
+            cam_data["cam"].astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC
+        )
+        heatmap_cam = cv2.applyColorMap(
+            (cam_resized * 255).astype(np.uint8), cv2.COLORMAP_JET
+        )
         overlay_cam = cv2.addWeighted(img, 0.6, heatmap_cam, 0.4, 0)
         ax_cam.imshow(overlay_cam)
         ax_cam.set_title(f"Grad-CAM\nGini: {metrics['gradcam_gini']:.3f}", fontsize=10)
-        ax_cam.axis('off')
+        ax_cam.axis("off")
 
         # Attention
         ax_attn = fig.add_subplot(gs[row, 2])
-        attn_resized = cv2.resize(attn_data['attention'].astype(np.float32), (w, h), interpolation=cv2.INTER_CUBIC)
-        heatmap_attn = cv2.applyColorMap((attn_resized * 255).astype(np.uint8), cv2.COLORMAP_JET)
+        attn_resized = cv2.resize(
+            attn_data["attention"].astype(np.float32),
+            (w, h),
+            interpolation=cv2.INTER_CUBIC,
+        )
+        heatmap_attn = cv2.applyColorMap(
+            (attn_resized * 255).astype(np.uint8), cv2.COLORMAP_JET
+        )
         overlay_attn = cv2.addWeighted(img, 0.6, heatmap_attn, 0.4, 0)
         ax_attn.imshow(overlay_attn)
-        ax_attn.set_title(f"Attention\nGini: {metrics['attention_gini']:.3f}", fontsize=10)
-        ax_attn.axis('off')
+        ax_attn.set_title(
+            f"Attention\nGini: {metrics['attention_gini']:.3f}", fontsize=10
+        )
+        ax_attn.axis("off")
 
         # Metrics
         ax_metrics = fig.add_subplot(gs[row, 3])
-        char = metrics['token_char']
-        pos = metrics['position']
-        loss = metrics['token_loss']
+        char = metrics["token_char"]
+        pos = metrics["position"]
+        loss = metrics["token_loss"]
 
         metrics_text = f"""Token: '{char}' (pos {pos})
 Loss: {loss:.3f}
 
 Grad-CAM:
-  Gini: {metrics['gradcam_gini']:.3f}
-  Coverage: {metrics['gradcam_coverage']:.1%}
-  Entropy: {metrics['gradcam_entropy']:.3f}
+  Gini: {metrics["gradcam_gini"]:.3f}
+  Coverage: {metrics["gradcam_coverage"]:.1%}
+  Entropy: {metrics["gradcam_entropy"]:.3f}
 
 Attention:
-  Gini: {metrics['attention_gini']:.3f}
-  Coverage: {metrics['attention_coverage']:.1%}
-  Entropy: {metrics['attention_entropy']:.3f}
+  Gini: {metrics["attention_gini"]:.3f}
+  Coverage: {metrics["attention_coverage"]:.1%}
+  Entropy: {metrics["attention_entropy"]:.3f}
 """
-        ax_metrics.text(0.05, 0.95, metrics_text, transform=ax_metrics.transAxes,
-                       fontsize=8, verticalalignment='top', fontfamily='monospace',
-                       bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.3))
-        ax_metrics.axis('off')
+        ax_metrics.text(
+            0.05,
+            0.95,
+            metrics_text,
+            transform=ax_metrics.transAxes,
+            fontsize=8,
+            verticalalignment="top",
+            fontfamily="monospace",
+            bbox=dict(boxstyle="round", facecolor="lightblue", alpha=0.3),
+        )
+        ax_metrics.axis("off")
 
     # Comparison plot
     ax_compare = fig.add_subplot(gs[-1, :])
-    positions = [t['position'] for t in token_results]
-    gradcam_ginis = [t['gradcam_gini'] for t in token_results]
-    attention_ginis = [t['attention_gini'] for t in token_results]
-    losses = [t['token_loss'] for t in token_results]
+    positions = [t["position"] for t in token_results]
+    gradcam_ginis = [t["gradcam_gini"] for t in token_results]
+    attention_ginis = [t["attention_gini"] for t in token_results]
+    losses = [t["token_loss"] for t in token_results]
 
     ax_loss = ax_compare.twinx()
-    ax_compare.plot(positions, gradcam_ginis, 'b-o', label='Grad-CAM Gini', linewidth=2)
-    ax_compare.plot(positions, attention_ginis, 'g-s', label='Attention Gini', linewidth=2)
-    ax_loss.plot(positions, losses, 'r-^', label='Token Loss', linewidth=2, alpha=0.7)
+    ax_compare.plot(positions, gradcam_ginis, "b-o", label="Grad-CAM Gini", linewidth=2)
+    ax_compare.plot(
+        positions, attention_ginis, "g-s", label="Attention Gini", linewidth=2
+    )
+    ax_loss.plot(positions, losses, "r-^", label="Token Loss", linewidth=2, alpha=0.7)
 
-    ax_compare.set_xlabel('Token Position', fontsize=11)
-    ax_compare.set_ylabel('Gini Coefficient', fontsize=11, color='black')
-    ax_loss.set_ylabel('Loss', fontsize=11, color='r')
-    ax_loss.tick_params(axis='y', labelcolor='r')
+    ax_compare.set_xlabel("Token Position", fontsize=11)
+    ax_compare.set_ylabel("Gini Coefficient", fontsize=11, color="black")
+    ax_loss.set_ylabel("Loss", fontsize=11, color="r")
+    ax_loss.tick_params(axis="y", labelcolor="r")
     ax_compare.grid(alpha=0.3)
-    ax_compare.legend(loc='upper left')
-    ax_loss.legend(loc='upper right')
-    ax_compare.set_title('Grad-CAM vs Attention: Token-Level Comparison', fontsize=12, fontweight='bold')
+    ax_compare.legend(loc="upper left")
+    ax_loss.legend(loc="upper right")
+    ax_compare.set_title(
+        "Grad-CAM vs Attention: Token-Level Comparison", fontsize=12, fontweight="bold"
+    )
 
     plt.tight_layout()
-    plt.savefig(save_dir / 'combined_analysis.png', dpi=150, bbox_inches='tight')
+    plt.savefig(save_dir / "combined_analysis.png", dpi=150, bbox_inches="tight")
     plt.close()
 
 
-def run_combined_analysis(model, test_dataset, processor, device, output_dir, num_samples=None):
+def run_combined_analysis(
+    model, test_dataset, processor, device, output_dir, num_samples=None
+):
     """
     Run complete Grad-CAM + Attention analysis
     """
@@ -628,31 +729,41 @@ def run_combined_analysis(model, test_dataset, processor, device, output_dir, nu
     all_token_results = []
     image_results = []
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("COMBINED GRAD-CAM + ATTENTION ANALYSIS (Token-Level)")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
-    for idx in tqdm(range(min(num_samples, len(test_dataset))), desc="Analyzing samples"):
+    for idx in tqdm(
+        range(min(num_samples, len(test_dataset))), desc="Analyzing samples"
+    ):
         try:
             item = test_dataset[idx]
             save_dir = output_dir / "combined_visualizations" / f"sample_{idx:04d}"
 
             result = analyze_sample_combined(model, item, processor, device, save_dir)
 
-            image_results.append({
-                'sample_id': idx,
-                'cer': result['image_cer'],
-                'prediction': result['prediction'],
-                'ground_truth': result['ground_truth'],
-                'num_tokens': len(result['token_results']),
-                'mean_gradcam_gini': np.mean([t['gradcam_gini'] for t in result['token_results']]),
-                'mean_attention_gini': np.mean([t['attention_gini'] for t in result['token_results']]),
-                'mean_loss': np.mean([t['token_loss'] for t in result['token_results']])
-            })
+            image_results.append(
+                {
+                    "sample_id": idx,
+                    "cer": result["image_cer"],
+                    "prediction": result["prediction"],
+                    "ground_truth": result["ground_truth"],
+                    "num_tokens": len(result["token_results"]),
+                    "mean_gradcam_gini": np.mean(
+                        [t["gradcam_gini"] for t in result["token_results"]]
+                    ),
+                    "mean_attention_gini": np.mean(
+                        [t["attention_gini"] for t in result["token_results"]]
+                    ),
+                    "mean_loss": np.mean(
+                        [t["token_loss"] for t in result["token_results"]]
+                    ),
+                }
+            )
 
-            for token_res in result['token_results']:
-                token_res['sample_id'] = idx
-                token_res['image_cer'] = result['image_cer']
+            for token_res in result["token_results"]:
+                token_res["sample_id"] = idx
+                token_res["image_cer"] = result["image_cer"]
                 all_token_results.append(token_res)
 
         except Exception as e:
@@ -674,9 +785,9 @@ def run_combined_analysis(model, test_dataset, processor, device, output_dir, nu
 
 def perform_combined_statistical_analysis(token_df, image_df, output_dir):
     """Compare Grad-CAM vs Attention"""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("COMPARATIVE ANALYSIS: GRAD-CAM vs ATTENTION")
-    print("="*70)
+    print("=" * 70)
 
     # Check if token_df is empty to avoid KeyError
     if token_df.empty:
@@ -687,10 +798,10 @@ def perform_combined_statistical_analysis(token_df, image_df, output_dir):
     print("\n1. Correlation with Token Loss")
     print("-" * 50)
 
-    for method in ['gradcam', 'attention']:
-        gini_col = f'{method}_gini'
-        r, p = pearsonr(token_df['token_loss'], token_df[gini_col])
-        rho, p_spear = spearmanr(token_df['token_loss'], token_df[gini_col])
+    for method in ["gradcam", "attention"]:
+        gini_col = f"{method}_gini"
+        r, p = pearsonr(token_df["token_loss"], token_df[gini_col])
+        rho, p_spear = spearmanr(token_df["token_loss"], token_df[gini_col])
 
         print(f"\n{method.upper()}:")
         print(f"  Pearson:  r = {r:7.4f}, p = {p:.4e}")
@@ -700,7 +811,7 @@ def perform_combined_statistical_analysis(token_df, image_df, output_dir):
     print("\n2. Agreement: Grad-CAM vs Attention")
     print("-" * 50)
 
-    r_agree, p_agree = pearsonr(token_df['gradcam_gini'], token_df['attention_gini'])
+    r_agree, p_agree = pearsonr(token_df["gradcam_gini"], token_df["attention_gini"])
     print(f"Correlation between methods: r = {r_agree:.4f}, p = {p_agree:.4e}")
 
     # Which is more predictive?
@@ -710,8 +821,8 @@ def perform_combined_statistical_analysis(token_df, image_df, output_dir):
     from sklearn.metrics import r2_score
     from scipy.stats import linregress
 
-    _, _, r_grad, _, _ = linregress(token_df['gradcam_gini'], token_df['token_loss'])
-    _, _, r_attn, _, _ = linregress(token_df['attention_gini'], token_df['token_loss'])
+    _, _, r_grad, _, _ = linregress(token_df["gradcam_gini"], token_df["token_loss"])
+    _, _, r_attn, _, _ = linregress(token_df["attention_gini"], token_df["token_loss"])
 
     print(f"Grad-CAM R² with loss: {r_grad**2:.4f}")
     print(f"Attention R² with loss: {r_attn**2:.4f}")
@@ -732,40 +843,58 @@ def create_comparison_plots(token_df, image_df, output_dir):
     # 1. Direct comparison
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
-    axes[0].scatter(token_df['gradcam_gini'], token_df['token_loss'],
-                    alpha=0.5, s=20, label='Grad-CAM')
-    axes[0].set_xlabel('Grad-CAM Gini', fontsize=12)
-    axes[0].set_ylabel('Token Loss', fontsize=12)
-    axes[0].set_title('Grad-CAM: Localization vs Loss', fontsize=13, fontweight='bold')
+    axes[0].scatter(
+        token_df["gradcam_gini"],
+        token_df["token_loss"],
+        alpha=0.5,
+        s=20,
+        label="Grad-CAM",
+    )
+    axes[0].set_xlabel("Grad-CAM Gini", fontsize=12)
+    axes[0].set_ylabel("Token Loss", fontsize=12)
+    axes[0].set_title("Grad-CAM: Localization vs Loss", fontsize=13, fontweight="bold")
     axes[0].grid(alpha=0.3)
 
-    axes[1].scatter(token_df['attention_gini'], token_df['token_loss'],
-                    alpha=0.5, s=20, color='green', label='Attention')
-    axes[1].set_xlabel('Attention Gini', fontsize=12)
-    axes[1].set_ylabel('Token Loss', fontsize=12)
-    axes[1].set_title('Attention: Localization vs Loss', fontsize=13, fontweight='bold')
+    axes[1].scatter(
+        token_df["attention_gini"],
+        token_df["token_loss"],
+        alpha=0.5,
+        s=20,
+        color="green",
+        label="Attention",
+    )
+    axes[1].set_xlabel("Attention Gini", fontsize=12)
+    axes[1].set_ylabel("Token Loss", fontsize=12)
+    axes[1].set_title("Attention: Localization vs Loss", fontsize=13, fontweight="bold")
     axes[1].grid(alpha=0.3)
 
     plt.tight_layout()
-    plt.savefig(plots_dir / 'gradcam_vs_attention_comparison.png', dpi=150)
+    plt.savefig(plots_dir / "gradcam_vs_attention_comparison.png", dpi=150)
     plt.close()
 
     # 2. Agreement plot
     plt.figure(figsize=(8, 8))
-    plt.scatter(token_df['gradcam_gini'], token_df['attention_gini'],
-                alpha=0.5, s=20, c=token_df['token_loss'], cmap='coolwarm')
-    plt.colorbar(label='Token Loss')
-    plt.plot([0, 1], [0, 1], 'r--', alpha=0.5, label='Perfect agreement')
-    plt.xlabel('Grad-CAM Gini', fontsize=12)
-    plt.ylabel('Attention Gini', fontsize=12)
-    plt.title('Method Agreement', fontsize=14, fontweight='bold')
+    plt.scatter(
+        token_df["gradcam_gini"],
+        token_df["attention_gini"],
+        alpha=0.5,
+        s=20,
+        c=token_df["token_loss"],
+        cmap="coolwarm",
+    )
+    plt.colorbar(label="Token Loss")
+    plt.plot([0, 1], [0, 1], "r--", alpha=0.5, label="Perfect agreement")
+    plt.xlabel("Grad-CAM Gini", fontsize=12)
+    plt.ylabel("Attention Gini", fontsize=12)
+    plt.title("Method Agreement", fontsize=14, fontweight="bold")
     plt.legend()
     plt.grid(alpha=0.3)
     plt.tight_layout()
-    plt.savefig(plots_dir / 'method_agreement.png', dpi=150)
+    plt.savefig(plots_dir / "method_agreement.png", dpi=150)
     plt.close()
 
     print(f"\n✅ Comparison plots saved to {plots_dir}")
+
 
 # ===================================================================
 # Cell 7: Main running: Token level analysis for Grad-CAM and Attention (Combined)
@@ -774,17 +903,20 @@ def create_comparison_plots(token_df, image_df, output_dir):
 # Load model and processor
 from transformers import VisionEncoderDecoderModel, TrOCRProcessor
 
-model_path = "./trocr_enc0_dec0_finetuned" #Path of your trained model
+model_path = "./trocr_enc0_dec0_finetuned"  # Path of your trained model
 model = VisionEncoderDecoderModel.from_pretrained(model_path)
 processor = TrOCRProcessor.from_pretrained(model_path)
 model.to(device)
 
 # Re-create test dataset (already exists in your notebook)
 test_dataset = TrOCRDataset(
-    test_anns, image_map, IMG_DIR, processor,
+    test_anns,
+    image_map,
+    IMG_DIR,
+    processor,
     max_target_length=128,
     augment_transform=None,
-    use_clahe=True
+    use_clahe=True,
 )
 # Run combined analysis
 output_dir = Path("./results")
@@ -798,12 +930,14 @@ token_df, image_df = run_combined_analysis(
     num_samples=None # Adjust as needed
 )
 
-print("\n" + "="*70)
+print("\n" + "=" * 70)
 print("KEY FINDINGS:")
-print("="*70)
+print("=" * 70)
 print(f"Total tokens analyzed: {len(token_df)}")
 print(f"Grad-CAM Gini: {token_df['gradcam_gini'].mean():.4f}")
 print(f"Attention Gini: {token_df['attention_gini'].mean():.4f}")
 print(f"\nCorrelations with Token Loss:")
-print(f"  Grad-CAM: {token_df[['token_loss', 'gradcam_gini']].corr().iloc[0,1]:.4f}")
-print(f"  Attention: {token_df[['token_loss', 'attention_gini']].corr().iloc[0,1]:.4f}")
+print(f"  Grad-CAM: {token_df[['token_loss', 'gradcam_gini']].corr().iloc[0, 1]:.4f}")
+print(
+    f"  Attention: {token_df[['token_loss', 'attention_gini']].corr().iloc[0, 1]:.4f}"
+)
