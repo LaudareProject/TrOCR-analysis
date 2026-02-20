@@ -15,7 +15,7 @@ def format_label(col_name):
     return col_name.replace('_', ' ').title()
 
 # Carica il dataset
-file_path = 'combined_token_results.csv'
+file_path = './results/combined_token_results.csv'
 
 try:
     df = pd.read_csv(file_path)
@@ -45,7 +45,7 @@ try:
     # Loop per creare ciascun grafico
     for x_var in x_vars:
         x_var_formatted = format_label(x_var)
-        filename = f'seaborn_scatter_{y_var}_vs_{x_var}.png'
+        filename = f'./results/plots/seaborn_scatter_{y_var}_vs_{x_var}.png'
 
         plt.figure(figsize=(10, 6))
 

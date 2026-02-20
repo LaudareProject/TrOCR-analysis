@@ -15,7 +15,7 @@ def format_label(col_name):
     return col_name.replace('_', ' ').title()
 
 # Carica il dataset
-file_path = 'combined_token_results.csv'
+file_path = './results/combined_token_results.csv'
 
 try:
     df = pd.read_csv(file_path)
@@ -70,7 +70,7 @@ try:
     plt.xticks(rotation=45, ha='right') # Ruota etichette asse x per leggibilità
     plt.yticks(rotation=0)
     plt.tight_layout()
-    plt.savefig('seaborn_plot_2_heatmap.png')
+    plt.savefig('./results/plots/seaborn_plot_2_heatmap.png')
     print("Plot: seaborn_plot_2_heatmap.png")
 
 except FileNotFoundError:

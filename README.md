@@ -83,18 +83,6 @@ Reference baseline: Kraken CATMuS is reported at 7.89% CER and 31.17% WER.
 
 ### Analysis scripts on `combined_token_results.csv`
 
-- `ml_experiment.py`
-  - Purpose: leave-one-out logistic-regression experiments with GradCAM/attention/loss feature sets at one CER threshold.
-  - Run: `uv run python ml_experiment.py <threshold>`.
-  - Outputs: printed metrics and per-experiment comparison table in console.
-- `gradcam_ablation.py`
-  - Purpose: leave-one-out ablation over GradCAM feature groups (single, pair, all metrics).
-  - Run: `uv run python gradcam_ablation.py <threshold>`.
-  - Outputs: printed classification metrics and coefficient summaries in console.
-- `filtered_token_experiment.py`
-  - Purpose: same classification setup as above, excluding `token_id` 0 and 2 for GradCAM features.
-  - Run: `uv run python filtered_token_experiment.py <threshold>`.
-  - Outputs: printed metrics, confusion matrix, and feature importance in console.
 - `threshold_analysis.py`
   - Purpose: sweeps CER thresholds and compares balanced accuracy for ML, GradCAM ablation, and filtered-token variants.
   - Run: `uv run python threshold_analysis.py`.

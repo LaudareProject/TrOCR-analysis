@@ -93,7 +93,7 @@ def create_cer_histogram(df):
              fontsize=10)
 
     plt.tight_layout()
-    plt.savefig('cer_distribution_histogram.png', dpi=300, bbox_inches='tight')
+    plt.savefig('./results/plots/cer_distribution_histogram.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     return cer_values
@@ -159,7 +159,7 @@ def create_sample_level_cer_histogram(df):
              fontsize=10)
 
     plt.tight_layout()
-    plt.savefig('sample_cer_distribution_histogram.png', dpi=300, bbox_inches='tight')
+    plt.savefig('./results/plots/sample_cer_distribution_histogram.png', dpi=300, bbox_inches='tight')
     plt.show()
 
     return sample_cer
@@ -184,7 +184,7 @@ def analyze_threshold_impact(cer_values):
         print(f"{threshold:<10.2f} {good_count:<15d} {bad_count:<15d} {good_pct:<10.1f} {bad_pct:<10.1f}")
 
 def main():
-    csv_path = 'combined_token_results.csv'
+    csv_path = './results/combined_token_results.csv'
 
     # Load token-level data
     df = load_token_data(csv_path)
