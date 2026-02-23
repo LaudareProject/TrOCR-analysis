@@ -330,7 +330,7 @@ class TokenLevelTrOCRGradCAM:
                     {
                         "position": pos.item(),
                         "token_id": token_id,
-                        "cam": cam_2d.cpu().numpy(),
+                        "cam": cam_2d.detach().cpu().numpy(),
                         "loss": loss,
                     }
                 )
@@ -571,10 +571,15 @@ def visualize_combined_analysis(
     """
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
+    raw_maps_dir = save_dir / "raw_maps"
+    raw_maps_dir.mkdir(parents=True, exist_ok=True)
 
     img = image_tensor.cpu().permute(1, 2, 0).numpy()
     img = ((img - img.min()) / (img.max() - img.min()) * 255).astype(np.uint8)
     h, w = img.shape[:2]
+
+    # Save raw input image for external post-processing script
+    Image.fromarray(img).save(raw_maps_dir / "input_image.png")
 
     num_tokens = len(token_cams)
 
@@ -617,6 +622,13 @@ Mean Loss: {np.mean([t["token_loss"] for t in token_results]):.4f}
         zip(token_cams, token_attentions, token_results)
     ):
         row = 1 + idx
+        token_prefix = f"token_{idx:03d}_pos_{metrics['position']:03d}"
+
+        # Save raw grayscale maps expected by visualize_heatmaps.py
+        cam_gray = np.clip(cam_data["cam"] * 255.0, 0, 255).astype(np.uint8)
+        attn_gray = np.clip(attn_data["attention"] * 255.0, 0, 255).astype(np.uint8)
+        Image.fromarray(cam_gray).save(raw_maps_dir / f"{token_prefix}_gradcam.png")
+        Image.fromarray(attn_gray).save(raw_maps_dir / f"{token_prefix}_attention.png")
 
         # Original crop
         ax_orig = fig.add_subplot(gs[row, 0])
@@ -927,7 +939,7 @@ token_df, image_df = run_combined_analysis(
     processor=processor,
     device=device,
     output_dir=output_dir,
-    num_samples=None # Adjust as needed
+    num_samples=120,  # Adjust as needed
 )
 
 print("\n" + "=" * 70)

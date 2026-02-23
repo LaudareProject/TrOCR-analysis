@@ -139,8 +139,8 @@ def process_sample(sample_number: str, aspect_ratio: float, opacity: float = 0.5
         opacity: Overlay opacity
     """
     # Define paths
-    base_path = Path("combined_visualizations") / f"sample_{sample_number}" / "raw_maps"
-    output_path = Path("combined_visualizations") / f"sample_{sample_number}" / "processed_heatmaps"
+    base_path = Path("./results/combined_visualizations") / f"sample_{sample_number}" / "raw_maps"
+    output_path = Path("./results/combined_visualizations") / f"sample_{sample_number}" / "processed_heatmaps"
     
     # Create output directory
     output_path.mkdir(parents=True, exist_ok=True)
